@@ -222,3 +222,75 @@ executions row status: timed_out
 
 Before the fix the same call returned `timed_out` with no execution id
 and nothing in `synapse.messages`.
+
+## Qwen3.6-35B-A3B NVFP4 on 192.168.1.133 (12:45 to 12:58), same tuned harness
+
+The LLM profile was re-pointed with
+`synapse.llm_profile_set('llm','openai','qwen36-nvfp4','http://192.168.1.133:8000/v1',NULL,'{}')`
+(vLLM on the second GB10, thinking left on). Only the profile changed: the
+tuned harness and lesson 1 are the ones the 4B runs used, and
+`scenario/seed.sql` alone reset the tickets (re-running `make seed` would
+also re-run `agents.sql` and overwrite the tuned harness).
+
+First run: 0 tickets written. The model passed `http_post.body` as a
+JSON-encoded string (`"{\"query\": ...}"`) instead of an object, the API
+answered 422 ("Input should be a valid dictionary") every time, and the
+agent spent 44 iterations retrying the lookup. The two passing conditions
+in that run are vacuous (nothing was written).
+
+Fix in pg-synapse (`plugins/pg-synapse-tools-http`): a string body that
+parses to a JSON object or array is sent parsed; any other string is
+unchanged. The `.so` from the rebuilt image was copied into the running
+container and the container restarted, so the database and the harness
+were kept.
+
+Second run:
+
+```
+{'status': 'max_iterations', 'iterations': 41, 'tokens_in': 282687, 'tokens_out': 16668, 'duration_ms': 166603, 'error': None}
+assertion: FAIL
+per condition: classification PASS | escalation PASS | refund decisions PASS | policy_version PASS | audit (one row per ticket) FAIL
+```
+
+4 of 5, and the first run where the refund decisions and policy versions
+are right (v1 for the May and June tickets, v2 after 1 July). The audit
+failed on budget, not judgment: the agent wrote duplicate audit rows for
+101, spent iterations deleting them, re-ran lookups it already had, and
+hit `max_iterations` (40) with 105 to 108 unaudited. It also took the
+`$n` type and count hints and recovered both times.
+
+## Tune on Qwen3.6 (12:57 to 13:27), then the adopted harness
+
+`make tune K=2 LLM_MODEL=qwen36-nvfp4 LLM_BASE_URL=http://192.168.1.133:8000/v1`,
+report in `tuned/20261019-125722/REPORT.md`:
+
+```
+rollout base1: passed=True score=1.0 iters=31 tokens=195553+19176
+rollout base2: passed=True score=1.0 iters=34 tokens=227346+31246
+rollout inv1:  passed=True score=1.0 iters=24 tokens=122541+13680
+rollout dom1:  passed=True score=1.0 iters=30 tokens=182660+14034
+rollout inv2:  passed=True score=1.0 iters=28 tokens=155044+12606
+rollout dom2:  passed=True score=1.0 iters=31 tokens=180661+11993
+rollout agg1:  passed=True score=1.0 iters=25 tokens=133163+7418
+rollout agg2:  passed=True score=1.0 iters=28 tokens=160162+14737
+selection: agg1 passed with the fewest tokens. Base passed 2/2.
+lesson 2 written to triage_agent
+```
+
+Both base rollouts passed, so the 4-of-5 run above was variance (the
+40-iteration cap is close to what this model needs with the old harness).
+The tuner's win is cost: `agg1` gives one copyable write statement per
+table with casts in the SQL and `handled_at = now()`, which removed the
+type and count retries. Lesson 2 records that pattern.
+
+`make run` on the applied harness, tickets reset with `scenario/seed.sql`:
+
+```
+{'status': 'completed', 'iterations': 24, 'tokens_in': 133114, 'tokens_out': 8693, 'duration_ms': 86307, 'error': None}
+assertion: PASS
+per condition: classification PASS | escalation PASS | refund decisions PASS | policy_version PASS | audit (one row per ticket) PASS
+```
+
+First full pass of the Plexus scenario. The live profile now points at
+`qwen36-nvfp4` on .133; `make seed` (or `llm_profile_set`) with the
+Makefile defaults puts it back on the local 4B Ollama model.

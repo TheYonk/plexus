@@ -76,7 +76,8 @@ Useful SQL: `select synapse.agent_harness('triage_agent')`,
 
 ## Next steps, in order
 
-Phase 2 (10:10 to 10:25 EST) closed items 2, 3, 5 and 6; details in
+Phase 2 (10:10 to 10:25 EST) closed items 2, 3, 6 and 7, and the
+12:45 to 13:30 session closed 4 and 5; details in
 `pg-synapse/docs/harness2-phase2-plan.md` and the last section of `RUN.md`.
 
 1. ~~Run `make run` on the applied harness~~ done: 3/5 conditions.
@@ -85,12 +86,16 @@ Phase 2 (10:10 to 10:25 EST) closed items 2, 3, 5 and 6; details in
    the best base rollout. Plexus has the file; `make run` prints it.
 3. ~~Keep the trajectory on timeout~~ done: `ProgressSink` on
    `ExecutionContext`; verified live (execution id, messages, trajectory).
-4. **Re-run `make tune K=2`** now that the tuner can climb. Expect it to
-   target the policy lookup and the `$6` id slot. ~30 min.
-5. **Try a stronger local model** for the agent (the HF cache has
-   `Intel/Qwen3-Coder-Next-int4-AutoRound`, 11/12 on the old bench;
-   `~/vllm-spark/qwen-next.yaml` has the serving recipe). The 4B model is
-   the demo's ceiling.
+4. ~~Re-run `make tune K=2`~~ done (12:57 to 13:27) on Qwen3.6: every
+   rollout passed, `agg1` adopted as the cheapest pass (133k input tokens
+   vs 195k to 227k for the base), lesson 2 written. Partial scoring was not
+   exercised because nothing failed; it still needs a run where the model
+   is the ceiling (the 4B one).
+5. ~~Try a stronger local model~~ done: Qwen3.6-35B-A3B NVFP4 on vLLM at
+   `http://192.168.1.133:8000/v1` (`qwen36-nvfp4`). Needed one pg-synapse
+   fix (`http_post` decodes a JSON-encoded string body). Tuned harness:
+   **5/5, PASS**, 24 iterations, 86 s. See the last two sections of
+   `RUN.md`. Coder-Next int4 is still untried (its weights are not on .133).
 6. ~~Upgrade script~~ done: `pg_synapse_pgrx--0.1.1--0.2.0.sql`, workspace
    at 0.2.0, verified 0.1.1 -> 0.2.0 catalog equals a fresh install.
    Still open: sidecar parity for skills, hints, lessons.
