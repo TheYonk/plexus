@@ -1,0 +1,30 @@
+# chunkshop cell: past agent runs as documents. Source is a Postgres view over
+# synapse.executions that renders each run with synapse.trajectory(); sink is
+# plexus.trajectory_chunks in the same database. Re-run after new executions.
+cell_name: plexus_trajectories
+source:
+  type: pg_table
+  dsn: "${PG_DSN}"
+  database: plexus
+  table: trajectory_docs
+  id_column: execution_id
+  content_column: content
+  metadata_columns: [agent_name, status]
+chunker:
+  type: sentence_aware
+  max_chars: 1500
+  min_chars: 200
+embedder:
+  type: fastembed
+  model_name: BAAI/bge-small-en-v1.5
+  dim: 384
+  threads: 4
+target:
+  type: postgres
+  dsn: "${PG_DSN}"
+  database: plexus
+  table: trajectory_chunks
+  mode: overwrite
+  source_tag: trajectories
+runtime:
+  omp_num_threads: 4

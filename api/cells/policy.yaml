@@ -1,0 +1,26 @@
+# chunkshop cell: the policy corpus as a flat vector table (plexus.policy_chunks).
+# The same corpus goes into pg-raggraph for versioned retrieval; this sink is
+# the cheap similarity path and the thing a bakeoff would tune.
+cell_name: plexus_policy
+source:
+  type: files
+  glob: "/home/yonk/yonk-tools/plexus/scenario/policy/*.md"
+  id_from: stem
+chunker:
+  type: sentence_aware
+  max_chars: 900
+  min_chars: 120
+embedder:
+  type: fastembed
+  model_name: BAAI/bge-small-en-v1.5
+  dim: 384
+  threads: 4
+target:
+  type: postgres
+  dsn: "${PG_DSN}"
+  database: plexus          # a SCHEMA, in chunkshop's vocabulary
+  table: policy_chunks
+  mode: overwrite
+  source_tag: policy
+runtime:
+  omp_num_threads: 4

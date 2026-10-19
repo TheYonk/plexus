@@ -1,0 +1,23 @@
+Triage every support ticket where category IS NULL.
+
+1. sql_query the open tickets joined to the customer tier:
+   SELECT t.id, t.created_at, t.subject, t.body, t.charge_date, c.tier
+   FROM support.tickets t JOIN support.customers c ON c.id = t.customer_id
+   WHERE t.category IS NULL ORDER BY t.id
+
+2. For each ticket decide category (api, billing, howto, other), priority (low, normal,
+   high, urgent) and escalated (true only when tier = enterprise AND priority = urgent).
+
+3. If the ticket is a refund request (charge_date is set), look up the refund policy that
+   was in force ON THE TICKET'S created_at DATE with the search_policy tool, passing
+   as_of = the ticket's created_at. Decide approve / deny / credit from that version and
+   record which version you applied in policy_version (e.g. refund-v1 or refund-v2).
+   Tickets that are not refund requests get refund_decision = 'n/a' and policy_version NULL.
+
+4. sql_exec one UPDATE per ticket setting category, priority, escalated, refund_decision,
+   policy_version and handled_at = now(), using $1.. placeholders with a params array.
+
+5. sql_exec exactly one INSERT INTO support.audit (ticket_id, action) per ticket with a
+   one-sentence description of the decision.
+
+Finish by reporting a count of tickets per category.

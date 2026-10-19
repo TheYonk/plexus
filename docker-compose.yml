@@ -1,0 +1,33 @@
+# Plexus: one Postgres that hosts the agent runtime (pg_synapse), the
+# retrieval layer (pgvector + pg_trgm for pg-raggraph), the memory layer
+# (stele) and the ingest sink (chunkshop).
+#
+#   docker compose up -d          # builds the image on first run (~3 min warm)
+#
+# The LLM (Ollama on the host) and the Plexus API (Python, host venv) are not
+# containers: the database reaches both through host.docker.internal, which
+# the SSRF allowlist below permits for pg_synapse's http_post tool.
+#
+# Build context is the sibling pg-synapse checkout (branch harness2-borrowings).
+
+services:
+  db:
+    build:
+      context: ../pg-synapse
+      dockerfile: ../plexus/db/Dockerfile
+    image: plexus-db:dev
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: plexus
+      PG_SYNAPSE_HTTP_ALLOW: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${PLEXUS_PG_PORT:-55441}:5432"
+    volumes:
+      - ./db/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d plexus"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
