@@ -1,12 +1,15 @@
 """Drive the Plexus UI through script.py and record it with Playwright.
 
-Writes demo/out/raw.webm and demo/out/timeline.json (when each narration
-clip starts on the video clock, and which stretches mux.py should speed up).
+Writes raw.webm and timeline.json under demo/out (or demo/out/<script>):
+when each narration clip starts on the video clock, and which stretches
+mux.py should speed up or cut.
 The agent run is live, so a run can fail. A failed run is retried inside
 the same take (steps 11 to 13 again, the failed attempt marked as a cut for
 mux.py) up to --run-retries times before the "fail" narration is used.
+The executive cut's veto works the same way: a wrong outcome is cut and
+tried again.
 
-    api/.venv/bin/python demo/record.py [--url http://127.0.0.1:8766/] [--headed]
+    api/.venv/bin/python demo/record.py [--script walkthrough|exec] [--url http://127.0.0.1:8766/] [--headed]
 """
 
 from __future__ import annotations
@@ -23,10 +26,8 @@ from playwright.async_api import Page, async_playwright
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from script import STEPS  # noqa: E402
+from scripts import MODULES, load  # noqa: E402
 
-OUT = HERE / "out"
-AUDIO = OUT / "audio"
 W, H = 1920, 1080
 PAD = 0.35  # silence after each clip
 WAIT_TARGET_S = 6.0  # an agent run of any length plays back in about this long
@@ -57,6 +58,22 @@ async def act(page: Page, action: str, rec: dict) -> None:
         if action == "@wait_run":
             rec["run"] = r
         print(f"  {action} done after {span:.0f}s: {r['status']} {r.get('error', '')}", flush=True)
+    elif action == "@veto":
+        for attempt in range(rec["retries"] + 1):
+            t_a = time.monotonic() - rec["t0"]
+            r = await page.evaluate("execDemo.runVeto()")
+            await asyncio.sleep(1.2)
+            t_b = time.monotonic() - rec["t0"]
+            cases = r.get("cases") or []
+            ok = len(cases) == 2 and not cases[0]["landed"] and cases[1]["landed"]
+            print(f"  @veto attempt {attempt + 1}: {t_b - t_a:.0f}s, {'ok' if ok else 'wrong: ' + json.dumps(cases)[:300]}", flush=True)
+            if ok or attempt == rec["retries"]:
+                break
+            rec["cuts"].append({"start": round(t_a, 3), "end": round(t_b, 3)})
+        rec["veto_ok"] = ok
+        span = t_b - t_a
+        if span > WAIT_TARGET_S + 2:
+            rec["speed"].append({"start": round(t_a + 0.8, 3), "end": round(t_b - 1.2, 3), "factor": round((span - 2.0) / (WAIT_TARGET_S - 2.0), 3)})
     elif action == "@spot_hint":
         rec["hint"] = await page.evaluate(HINT_JS)
         await asyncio.sleep(0.6)
@@ -71,25 +88,29 @@ def pick_clip(step: dict, rec: dict) -> str:
         return f"{step['id']}.{'pass' if rec.get('passed') else 'fail'}"
     if step["id"].startswith("16-"):
         return f"{step['id']}.{'hint' if rec.get('hint') else 'clean'}"
+    if step["id"].startswith("e04-"):
+        return f"{step['id']}.{'ok' if rec.get('veto_ok') else 'off'}"
     raise KeyError(step["id"])
 
 
-async def record_once(url: str, headed: bool, run_retries: int) -> dict:
-    durations = json.loads((AUDIO / "durations.json").read_text())
-    vid_dir = OUT / "video-tmp"
+async def record_once(mod, out: pathlib.Path, url: str, headed: bool, run_retries: int) -> dict:
+    STEPS = mod.STEPS
+    durations = json.loads((out / "audio" / "durations.json").read_text())
+    vid_dir = out / "video-tmp"
     shutil.rmtree(vid_dir, ignore_errors=True)
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=not headed)
         ctx = await browser.new_context(viewport={"width": W, "height": H}, record_video_dir=str(vid_dir), record_video_size={"width": W, "height": H})
         page = await ctx.new_page()
-        rec: dict = {"t0": time.monotonic(), "clips": [], "speed": [], "cuts": []}
+        rec: dict = {"t0": time.monotonic(), "clips": [], "speed": [], "cuts": [], "retries": run_retries}
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
-        await page.goto(f"{url}?demo=1#stack")
-        await page.wait_for_function("document.querySelector('#shell-state').textContent === 'connected'", timeout=15000)
-        await page.evaluate("plexusDemo.sendToShell('clear')")
+        await page.goto(f"{url}{mod.PAGE}")
+        await page.wait_for_function(mod.READY_JS, timeout=15000)
+        for js in getattr(mod, "SETUP_JS", []):
+            await page.evaluate(js)
         await asyncio.sleep(1.0)
-        run_block = next(i for i, s in enumerate(STEPS) if s["id"].startswith("11-"))
+        run_block = next((i for i, s in enumerate(STEPS) if s["id"].startswith("11-")), None)
         t_block = 0.0
         i = 0
         try:
@@ -133,12 +154,13 @@ async def record_once(url: str, headed: bool, run_retries: int) -> dict:
             video = page.video
             await ctx.close()
             await browser.close()
-        raw = OUT / "raw.webm"
+        raw = out / "raw.webm"
         shutil.move(await video.path(), raw)
         shutil.rmtree(vid_dir, ignore_errors=True)
         rec["video"] = str(raw)
         rec["page_errors"] = errors
         rec.pop("t0")
+        rec.pop("retries")
         return rec
 
 
@@ -147,10 +169,12 @@ async def main() -> None:
     ap.add_argument("--url", default="http://127.0.0.1:8766/")
     ap.add_argument("--headed", action="store_true")
     ap.add_argument("--run-retries", type=int, default=3)
+    ap.add_argument("--script", choices=sorted(MODULES), default="walkthrough")
     args = ap.parse_args()
-    OUT.mkdir(exist_ok=True)
-    print("recording", flush=True)
-    rec = await record_once(args.url, args.headed, args.run_retries)
+    mod, OUT = load(args.script)
+    OUT.mkdir(parents=True, exist_ok=True)
+    print(f"recording {args.script}", flush=True)
+    rec = await record_once(mod, OUT, args.url, args.headed, args.run_retries)
     (OUT / "timeline.json").write_text(json.dumps(rec, indent=1, default=str))
     print(f"wrote {OUT / 'raw.webm'} and timeline.json ({rec['end']:.0f}s, page errors: {len(rec['page_errors'])})")
 

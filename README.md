@@ -65,11 +65,16 @@ make down
 ```bash
 make ui          # restarts the API with the shell dock on; open http://127.0.0.1:8766/
 make demo-video  # ElevenLabs narration + Playwright recording -> demo/out/plexus-demo.mp4
+make exec-video  # the executive cut (customer outcome, http://127.0.0.1:8766/exec) -> demo/out/exec/plexus-exec.mp4
 ```
 
 The UI shows the stack, policy time-travel, the harness as data, a live run
 (the agent's policy calls stream in while `synapse.execute` runs), the
 trajectory, and the tuner's last run, next to a real shell on this machine.
+`/exec` is the business version: a large retailer's refund queue, a live
+veto of a bad refund, one decision explained end to end, the measured
+tuning saving, Plexus against harness2 and a typical agent stack, and a
+value calculator whose assumptions are on screen.
 Every UI route answers loopback clients only; the shell also needs
 `PLEXUS_SHELL=1` (set by `make ui`) and a per-process token. `demo-video`
 needs `ELEVENLABS_API_KEY`; the narration lives in `demo/script.py`. Design

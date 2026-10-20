@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus for the business</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/exec.css">
+</head>
+<body class="exec">
+<header class="top">
+  <div class="brand"><span class="logo">◎</span> Plexus <span class="tag">AI agents that make money decisions, inside the system of record</span></div>
+  <nav class="dots" id="dots"></nav>
+</header>
+
+<main class="deck" id="deck">
+  <!-- 1 -->
+  <section class="slide" data-n="1">
+    <div class="kicker">The customer <span class="illus">illustrative</span></div>
+    <h1 class="big">Two million tickets a month.<br><span class="hl">Every refund is a money decision.</span></h1>
+    <div class="profile" id="profile">
+      <div><b>2,000,000</b><span>support tickets / month</span></div>
+      <div><b>400,000</b><span>need a refund decision</span></div>
+      <div><b>4</b><span>policy rewrites a year</span></div>
+      <div><b>12</b><span>regions, each with its own rules</span></div>
+    </div>
+    <p class="sub">A subscription retailer. They want an AI agent on the queue. The board asks three questions.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide" data-n="2">
+    <div class="kicker">What goes wrong today</div>
+    <h1>Three questions the board will ask</h1>
+    <div class="risks">
+      <div class="risk" id="risk-money"><div class="ico">$</div><h3>Can it give away money it shouldn't?</h3><p>Policies change. An agent that reads the newest policy for an old ticket refunds the wrong amount, at queue speed.</p></div>
+      <div class="risk" id="risk-audit"><div class="ico">?</div><h3>Can we explain any single decision?</h3><p>Chargebacks, regulators, an angry customer on the phone. The answer lives in logs across four or five services.</p></div>
+      <div class="risk" id="risk-cost"><div class="ico">↻</div><h3>Does it get better, or just more expensive?</h3><p>Most agents improve only when an engineer reads transcripts and edits a prompt by hand.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 veto -->
+  <section class="slide" data-n="3">
+    <div class="kicker">Proof 1 <span class="live">live</span></div>
+    <h1>A bad refund cannot land. <span class="hl">The database says no.</span></h1>
+    <p class="sub">An agent sits on the refunds table as a trigger. Before any refund commits, it checks the policy that was in force on the ticket's date. A reject rolls the write back.</p>
+    <div class="veto" id="veto">
+      <div class="vcase" id="vcase-0"></div>
+      <div class="vcase" id="vcase-1"></div>
+    </div>
+    <div class="vafter" id="vafter"></div>
+    <button class="btn primary" id="btn-veto">Try both refunds</button>
+  </section>
+
+  <!-- 4 audit -->
+  <section class="slide" data-n="4">
+    <div class="kicker">Proof 2 <span class="live">live</span></div>
+    <h1>Any decision, explained <span class="hl">from one database.</span></h1>
+    <p class="sub">Ticket <b id="aud-id">104</b>: what the customer asked, the policy in force that day, the moment the agent looked it up, and what it decided.</p>
+    <ol class="chain" id="chain"></ol>
+  </section>
+
+  <!-- 5 cheaper -->
+  <section class="slide" data-n="5">
+    <div class="kicker">Proof 3 <span class="measured">measured</span></div>
+    <h1>It got cheaper <span class="hl">without an engineer touching it.</span></h1>
+    <p class="sub">The tuner read the agent's own runs, proposed changes, tested each one in a throwaway copy of the database, and adopted the cheapest harness that still passed every check.</p>
+    <div class="nums" id="nums">
+      <div><span>input tokens per ticket, before</span><b id="n-base">…</b></div>
+      <div class="arrow">→</div>
+      <div><span>after tuning</span><b id="n-after" class="ok">…</b></div>
+      <div class="pct"><b id="n-pct">…</b><span>cheaper, same result</span></div>
+    </div>
+    <div class="lesson exec-lesson" id="x-lesson"></div>
+  </section>
+
+  <!-- 6 compare -->
+  <section class="slide" data-n="6">
+    <div class="kicker">Why not harness2 and the usual stack?</div>
+    <h1>harness2 is the method. <span class="hl">Plexus is where it runs.</span></h1>
+    <table class="vs" id="vs">
+      <thead><tr><th></th><th>Typical agent stack</th><th>harness2 on its own</th><th class="me">Plexus</th></tr></thead>
+      <tbody>
+        <tr id="vs-where"><td>Where the agent runs</td><td>An app server calling a database, a vector store and a memory service</td><td>A research harness, against benchmark tasks</td><td class="me">Inside the system of record: one SQL call</td></tr>
+        <tr id="vs-half"><td>A run that dies halfway</td><td>Partial writes to find and clean up</td><td>Offline; not its job</td><td class="me">One transaction: all or nothing</td></tr>
+        <tr id="vs-asof"><td>Policy in force on a date</td><td>Usually the newest document wins</td><td>Not its job</td><td class="me">Retrieval as of the ticket date; version stored on every decision</td></tr>
+        <tr id="vs-stop"><td>Stopping a bad write</td><td>Code review and hope</td><td>Not its job</td><td class="me">A trigger agent vetoes it inside the transaction</td></tr>
+        <tr id="vs-audit"><td>Explaining a decision</td><td>Logs across four or five services</td><td>Files from each tuning run</td><td class="me">Decision, policy, trajectory and lesson in tables: one query</td></tr>
+        <tr id="vs-learn"><td>What tuning learns from</td><td>Nothing, or a separate eval product</td><td>Benchmark rollouts</td><td class="me">Your agent's own trajectories, each probe in its own throwaway database</td></tr>
+        <tr id="vs-adopt"><td>Adopting a change</td><td>A redeploy</td><td>Copy the files into your app yourself</td><td class="me">An update to the harness rows, with the evidence attached</td></tr>
+        <tr id="vs-sys"><td>Systems to run and secure</td><td>Four to six</td><td>One, plus all of the above</td><td class="me">Postgres and a model endpoint</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 7 math -->
+  <section class="slide" data-n="7">
+    <div class="kicker">The math <span class="illus">your numbers here</span></div>
+    <h1>What it is worth</h1>
+    <div class="math">
+      <div class="inputs" id="inputs"></div>
+      <div class="outputs">
+        <div class="out" id="out-exposure"><span>refund money exposed to wrong-policy decisions, per year</span><b id="o-exposure">…</b><i>what the as-of check and the veto protect</i></div>
+        <div class="out" id="out-tokens"><span>model spend saved by the tuning, per year</span><b id="o-tokens">…</b><i>from the measured per-ticket saving</i></div>
+        <div class="out" id="out-systems"><span>systems in the agent's path</span><b>1</b><i>instead of four to six</i></div>
+      </div>
+    </div>
+    <p class="foot">Sliders marked <span class="illus">assumption</span> are yours to set. Tokens per ticket are <span class="measured">measured</span> in this demo on Qwen3.6-35B-A3B.</p>
+  </section>
+
+  <!-- 8 close -->
+  <section class="slide" data-n="8">
+    <h1 class="big">Agents you can put on the money.</h1>
+    <div class="three">
+      <div><b>Can't leak</b><span>the policy in force, enforced in the transaction</span></div>
+      <div><b>Can explain</b><span>every decision, one query away</span></div>
+      <div><b>Gets cheaper</b><span>tuned from its own history, with receipts</span></div>
+    </div>
+    <p class="sub">pg_synapse, branch <code>harness2-borrowings</code>. One Postgres.</p>
+  </section>
+</main>
+
+<div class="spot hidden" id="spot"></div>
+<div class="spot-cap hidden" id="spot-cap"></div>
+<script src="/static/exec.js"></script>
+</body>
+</html>

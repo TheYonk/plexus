@@ -185,6 +185,40 @@ section can send commands to ("run in shell" buttons). `?demo=1` exposes
   and `mux.py` cuts the failed attempt, so a take costs one extra run, not
   a full re-record.
 
+## Voice-over v2 (2026-10-20, after the user's review)
+
+The user's notes on the first cut: the voice was not natural, it should be
+ElevenLabs v4 with emotion and audio tags, some words came out wrong ("row",
+"synapse"), clip volumes differed, and you could hear the switch from one
+clip to the next.
+
+- [x] V1 model `eleven_v4` (the account's professional voice renders on it;
+      `eleven_v3` also answers). Audio tags (`[excited]`, `[thoughtful]`,
+      `[laughs]`, `[serious]`, `[casual]`, `[sighs]`) placed sparingly.
+- [x] V2 respellings in the spoken text only: pg_synapse -> "P G Sin-aps",
+      pg-raggraph -> "P G Rag Graph", stele -> "Steely", Qwen -> "Kwen",
+      SQL -> "sequel", YAML -> "yammel"; "row" replaced with "record" or
+      "entry" everywhere.
+- [x] V3 request stitching: every clip is rendered with its neighbours as
+      `previous_text` / `next_text` and a fixed `seed`, so the 23 clips
+      sound like one read. The cache key includes the neighbours.
+- [x] V4 loudness: the old clips spanned -22 to -38 LUFS (about 15 dB),
+      and one loudnorm over the whole mix could not fix a per-clip
+      difference. `voice.py` now measures every clip's integrated loudness
+      into `loudness.json`; `mux.py` gains each clip to -16 LUFS, adds a
+      30 ms fade in and 80 ms fade out (no edge clicks), and a limiter
+      replaces the mix-wide loudnorm.
+- [x] V5 verify: every clip transcribed locally (faster-whisper small.en;
+      the API key has no speech-to-text permission): no tag is spoken, and
+      "Sin-aps" comes back as "Synapse". Final mux measured per clip:
+      -16.3 to -17.4 LUFS (was a 15 dB spread).
+- [x] V6 demo mode hides the verdict chip again on reset, so a retried
+      take no longer shows the cut attempt's FAIL during the next run.
+
+Final take: 6:06, one failed run cut (the early-quit issue below), the
+retry passed 5/5 and hit a real tool error plus hint, so the "hint" line
+plays.
+
 ## Next steps and gaps
 
 - Premature completion is the next tuning target: a `make tune` with k

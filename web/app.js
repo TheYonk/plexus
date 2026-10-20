@@ -179,6 +179,8 @@ function startPolling() {
 async function resetTickets() {
   await api("/ui/reset", { method: "POST" });
   lastExecution = null;
+  demoRunDone = false; // a retried take must not show the cut attempt's verdict
+  await refreshHeader();
   await loadRun();
 }
 async function runAgent() {

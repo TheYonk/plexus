@@ -15,7 +15,10 @@ from what is on screen); voice.py renders every variant.
 """
 
 VOICE_ID = "0L2sOpIAWLpsxLGbOsnX"  # ElevenLabs professional voice "The Yonk"
-MODEL_ID = "eleven_multilingual_v2"
+MODEL_ID = "eleven_v4"  # audio tags ([excited], [laughs]) shape delivery; they are not spoken
+PAGE = "?demo=1#stack"
+READY_JS = "() => document.querySelector('#shell-state').textContent === 'connected'"
+SETUP_JS = ["plexusDemo.sendToShell('clear')"]
 
 D = "plexusDemo"
 
@@ -24,9 +27,9 @@ STEPS = [
         "id": "01-open",
         "pre": [f"{D}.goto('stack')", "@pause:1.2"],
         "say": (
-            "Here's the thing that bugs me about most agent demos. The agent lives in one place, "
+            "[thoughtful] Here's what bugs me about most agent demos. The agent lives in one place, "
             "the data lives somewhere else, the memory is a third service, and whatever is supposed "
-            "to make the agent better lives in somebody's notebook. This is Plexus. One Postgres. "
+            "to make the agent better lives in somebody's notebook. [excited] This is Plexus. One Postgres. "
             "The agent, its retrieval, its memory, and the loop that tunes it, all in the same database."
         ),
     },
@@ -34,7 +37,7 @@ STEPS = [
         "id": "02-synapse",
         "pre": [f"{D}.spotlight('#card-synapse', 'pg_synapse: the agent loop, inside the backend')"],
         "say": (
-            "pg_synapse is the agent runtime, built as a Postgres extension. You call select synapse "
+            "P G Sin-aps is the agent runtime, built as a Postgres extension. You call select, sin-aps "
             "dot execute, and the whole tool-calling loop runs inside the database."
         ),
     },
@@ -46,8 +49,8 @@ STEPS = [
             (0.74, f"{D}.spotlight('#card-chunk', 'chunkshop: ingest')"),
         ],
         "say": (
-            "pg-raggraph does versioned retrieval. Documents carry effective dates, so you can ask "
-            "what was true as of a given day. stele is memory with receipts: every belief points at "
+            "P G Rag Graph does versioned retrieval. Documents carry effective dates, so you can ask "
+            "what was true as of a given day. Steely is memory with receipts: every belief points at "
             "the evidence it came from, and a correction supersedes the old belief instead of erasing it. "
             "And chunkshop handles ingest, for the policy docs and for the agent's own past runs."
         ),
@@ -56,7 +59,7 @@ STEPS = [
         "id": "04-llm",
         "pre": [f"{D}.spotlight('#card-llm', 'the only thing outside the database')"],
         "say": (
-            "The only thing outside the database is the model. Right now that's Qwen three point six, "
+            "The only thing outside the database is the model. Right now that's Kwen three point six, "
             "a thirty-five billion parameter mixture of experts, running on a DGX Spark on my network."
         ),
     },
@@ -70,9 +73,9 @@ STEPS = [
             (0.30, f"{D}.typeInShell(\"psql $DSN -Atc \\\"select 'pg_synapse ' || synapse.version(), model || ' @ ' || base_url from synapse.llm_profiles\\\"\", 40)"),
         ],
         "say": (
-            "And this isn't a slide. That panel on the right is a real shell on this machine, wired "
-            "into the app. Let me ask the database what it's running. pg_synapse zero point two, and "
-            "the model is just a row in a table. Swapping models is an update, not a redeploy."
+            "[casual] And this isn't a slide. That panel on the right is a real shell on this machine, wired "
+            "into the app. Let me ask the database what it's running. P G Sin-aps zero point two, and "
+            "the model is just a record in a table. Swapping models is an update, not a redeploy."
         ),
     },
     {
@@ -81,24 +84,24 @@ STEPS = [
         "say": (
             "So here's the job. Eight support tickets, and four of them are refund requests. On July "
             "first the refund policy changed, and the window went from fourteen days to thirty. "
-            "The catch? Each refund has to be decided under the policy that was in force on the day "
+            "[curious] The catch? Each refund has to be decided under the policy that was in force on the day "
             "the ticket came in. Not the newest one. That trips up just about every RAG setup I've "
-            "seen (and a few humans too)."
+            "seen. [laughs] And a few humans too."
         ),
     },
     {
         "id": "07-compare",
         "pre": [f"{D}.clearSpot()", f"{D}.comparePolicy()", "@pause:1.5", f"{D}.spotlight('#compare', 'same question, two dates')"],
         "say": (
-            "Same question, two dates. As of May twentieth, pg-raggraph hands back version one. "
-            "As of July twentieth, version two. Time travel, in SQL."
+            "Same question, two dates. As of May twentieth, P G Rag Graph hands back version one. "
+            "As of July twentieth, version two. [excited] Time travel, in sequel."
         ),
     },
     {
         "id": "08-harness2",
         "pre": [f"{D}.clearSpot()", f"{D}.goto('harness')", "@pause:0.8"],
         "say": (
-            "Now the part I'm actually excited about. Google Research put out a project called "
+            "[excited] Now the part I'm actually excited about. Google Research put out a project called "
             "harness two, and the idea is simple and kind of brilliant. Stop trying to make the model "
             "smarter. Hold the weights fixed, and optimize everything around it: the prompt, the rules, "
             "the tools, the hints. They call that the harness."
@@ -109,7 +112,7 @@ STEPS = [
         "pre": [f"{D}.spotlight('.meter', 'always-on context has a budget')"],
         "at": [(0.55, f"{D}.spotlight('#hc-system_prompt', 'always-on: paid on every turn')")],
         "say": (
-            "We borrowed that. In pg_synapse the harness is data. Every component is a row, and every "
+            "We borrowed that. In P G Sin-aps, the harness is data. Every component is a record, and every "
             "component has a price, meaning how much context it costs and when. The system prompt, "
             "guardrails and memory are always on, so they're capped at twenty-four thousand characters, "
             "and the database enforces it."
@@ -135,7 +138,7 @@ STEPS = [
         "pre": [f"{D}.clearSpot()", f"{D}.goto('run')", "@pause:0.6", f"{D}.resetTickets()", "@pause:0.8"],
         "at": [(0.55, f"{D}.runAgent()")],
         "say": (
-            "Let's run it. Reset the tickets so they're all blank, and kick it off. One SQL call."
+            "[excited] Let's run it. Reset the tickets so they're all blank, and kick it off. One sequel call."
         ),
     },
     {
@@ -154,8 +157,8 @@ STEPS = [
         "say": (
             "And there go the policy calls. For every refund, the agent asks the policy service what "
             "was in force on that ticket's date, and you can watch the answers land. Then it writes "
-            "its decisions back with parameterized SQL, and logs one audit row per ticket. "
-            "I'll speed the rest of this up."
+            "its decisions back with parameterized sequel, and logs one audit entry per ticket. "
+            "[casual] I'll speed the rest of this up."
         ),
         "after": [f"{D}.clearSpot()", "@wait_run", "@pause:1.0"],
     },
@@ -164,12 +167,12 @@ STEPS = [
         "pre": [f"{D}.spotlight('#conds', 'the five checks the grader runs')"],
         "variants": {
             "pass": (
-                "And there it is. Every ticket classified, the enterprise outage escalated, every "
-                "refund decided under the right version of the policy, and one audit row each. "
+                "[excited] And there it is. Every ticket classified, the enterprise outage escalated, every "
+                "refund decided under the right version of the policy, and one audit entry each. "
                 "Five for five."
             ),
             "fail": (
-                "And this time it didn't get everything right. Which is honestly the point of the next "
+                "[sighs] And this time it didn't get everything right. Which is honestly the point of the next "
                 "part: the conditions tell you what failed, and the trajectory tells you why."
             ),
         },
@@ -178,7 +181,7 @@ STEPS = [
         "id": "15-trajectory",
         "pre": [f"{D}.clearSpot()", f"{D}.goto('trajectory')", "@pause:1.0", f"{D}.spotlight('#traj', 'synapse.trajectory(execution_id)')"],
         "say": (
-            "But the pass isn't the interesting part. The evidence is. synapse dot trajectory renders "
+            "But the pass isn't the interesting part. The evidence is. Sin-aps dot trajectory renders "
             "the whole run, every action and every observation, straight out of the tables."
         ),
     },
@@ -187,8 +190,8 @@ STEPS = [
         "pre": ["@spot_hint"],
         "variants": {
             "hint": (
-                "And look at this one. A tool call failed, the matching hint got appended right to the "
-                "error, and the agent fixed its own call on the very next turn. Nobody wrote a retry "
+                "[curious] And look at this one. A tool call failed, the matching hint got appended right to the "
+                "error, and the agent fixed its own call on the very next turn. [laughs] Nobody wrote a retry "
                 "handler for that."
             ),
             "clean": (
@@ -220,7 +223,7 @@ STEPS = [
         "id": "19-tuner-diff",
         "pre": [f"{D}.spotlight('#diff', 'the edit, as a diff')"],
         "say": (
-            "And the change is readable. Instead of describing the SQL rules in prose, the adopted "
+            "And the change is readable. Instead of describing the sequel rules in prose, the adopted "
             "harness hands the agent one copy-ready statement per table. That alone stopped the "
             "retries on the first write."
         ),
@@ -237,7 +240,7 @@ STEPS = [
         "id": "21-honest",
         "pre": [f"{D}.clearSpot()"],
         "say": (
-            "Now, the honest part. On a small four billion parameter model, this same scenario tops out "
+            "[serious] Now, the honest part. On a small four billion parameter model, this same scenario tops out "
             "at three out of five. The bigger model is what got us to a pass, and the tuner made it "
             "cheaper. Model choice still matters. The harness is how you get the most out of whatever "
             "model you pick."
@@ -249,7 +252,7 @@ STEPS = [
         "at": [(0.25, f"{D}.typeInShell(\"psql $DSN -c \\\"select lesson_id, left(lesson, 60) as lesson, confidence from synapse.lessons\\\"\", 40)")],
         "say": (
             "And since it's all just Postgres, the lessons are one query away. No vector store bolted on "
-            "the side. No YAML files on somebody's laptop."
+            "the side. [laughs] No yammel files on somebody's laptop."
         ),
     },
     {
@@ -258,7 +261,7 @@ STEPS = [
         "say": (
             "So that's Plexus. One database running the agent, the retrieval, the memory, and the loop "
             "that makes it better. Harness two's ideas, living where your data already lives. The code "
-            "is in the pg_synapse repo, on the harness two borrowings branch. Go break it."
+            "is in the P G Sin-aps repo, on the harness two borrowings branch. [excited] Go break it."
         ),
         "after": ["@pause:2.0"],
     },

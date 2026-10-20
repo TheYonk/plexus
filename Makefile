@@ -3,6 +3,7 @@
 #   make up        start Postgres (pg_synapse + pgvector + pg_trgm) and the API
 #   make ui        restart the API with the web UI's shell dock on (loopback only)
 #   make demo-video  narrate (ElevenLabs), record (Playwright), mux -> demo/out/plexus-demo.mp4
+#   make exec-video  the executive cut (customer outcome) -> demo/out/exec/plexus-exec.mp4
 #   make ingest    policy corpus -> pg-raggraph (versioned) + chunkshop sink
 #   make seed      scenario tables, agents, skills, hints, inline veto trigger
 #   make run       triage_agent handles every ticket; prints the assertion
@@ -28,7 +29,7 @@ PSQL = psql "$(DSN)" -X -v ON_ERROR_STOP=1
 PLEXUS_SHELL ?= 0
 VENV = $(HERE)/api/.venv
 
-.PHONY: up down venv api ui demo-video ingest seed run veto memory tune status trajectories
+.PHONY: up down venv api ui demo-video exec-video ingest seed run veto memory tune status trajectories
 
 up:
 	docker compose -f $(HERE)/docker-compose.yml up -d --build
@@ -116,6 +117,11 @@ demo-video:
 	$(VENV)/bin/python $(HERE)/demo/voice.py
 	$(VENV)/bin/python $(HERE)/demo/record.py --url http://127.0.0.1:$(API_PORT)/
 	$(VENV)/bin/python $(HERE)/demo/mux.py
+
+exec-video:
+	$(VENV)/bin/python $(HERE)/demo/voice.py --script exec
+	$(VENV)/bin/python $(HERE)/demo/record.py --script exec --url http://127.0.0.1:$(API_PORT)/
+	$(VENV)/bin/python $(HERE)/demo/mux.py --script exec
 
 status:
 	@$(PSQL) -c "select agent_name, status, tokens_in, tokens_out, duration_ms, started_at from synapse.executions order by started_at desc limit 10"

@@ -1,14 +1,19 @@
 """Render every narration clip in script.py with ElevenLabs.
 
 Clips are cached in demo/out/audio/<step>[.<variant>].mp3 next to a .json
-holding the hash of (voice, model, text), so editing one line re-renders one
-clip. Durations come from ffmpeg and land in demo/out/audio/durations.json.
+holding the hash of (voice, model, text, neighbours), so editing one line
+re-renders that clip and the two beside it. Each request carries the
+neighbouring lines as previous_text / next_text and a fixed seed, so the
+clips sound like one take rather than 23 separate ones. Durations land in
+demo/out/audio/durations.json, integrated loudness (LUFS) in loudness.json;
+mux.py uses the latter to level every clip to the same loudness.
 
-    ELEVENLABS_API_KEY=... api/.venv/bin/python demo/voice.py
+    ELEVENLABS_API_KEY=... api/.venv/bin/python demo/voice.py [--script walkthrough|exec]
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -21,19 +26,25 @@ import urllib.request
 import imageio_ffmpeg
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from script import MODEL_ID, STEPS, VOICE_ID  # noqa: E402
+from scripts import MODULES, load  # noqa: E402
 
-OUT = pathlib.Path(__file__).resolve().parent / "out" / "audio"
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 
 
-def clips() -> list[tuple[str, str]]:
+SEED = 4242
+
+
+def clips(STEPS: list[dict]) -> list[tuple[str, str, str, str]]:
+    """(clip id, text, previous line, next line); variants use their step's neighbours."""
+    main = [s["say"] if "say" in s else next(iter(s["variants"].values())) for s in STEPS]
     out = []
-    for s in STEPS:
+    for i, s in enumerate(STEPS):
+        prev = main[i - 1] if i > 0 else ""
+        nxt = main[i + 1] if i + 1 < len(STEPS) else ""
         if "say" in s:
-            out.append((s["id"], s["say"]))
+            out.append((s["id"], s["say"], prev, nxt))
         for name, text in s.get("variants", {}).items():
-            out.append((f"{s['id']}.{name}", text))
+            out.append((f"{s['id']}.{name}", text, prev, nxt))
     return out
 
 
@@ -46,19 +57,28 @@ def duration(path: pathlib.Path) -> float:
     return int(h) * 3600 + int(mnt) * 60 + float(sec)
 
 
-def tts(text: str, dest: pathlib.Path) -> None:
+def loudness(path: pathlib.Path) -> float:
+    err = subprocess.run([FFMPEG, "-hide_banner", "-i", str(path), "-af", "loudnorm=print_format=json", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    return float(json.loads(err[err.rindex("{"):err.rindex("}") + 1])["input_i"])
+
+
+def tts(voice_id: str, model_id: str, text: str, prev: str, nxt: str, dest: pathlib.Path) -> None:
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         sys.exit("ELEVENLABS_API_KEY is not set")
     body = json.dumps(
         {
             "text": text,
-            "model_id": MODEL_ID,
-            "voice_settings": {"stability": 0.45, "similarity_boost": 0.8, "style": 0.25, "use_speaker_boost": True},
+            "model_id": model_id,
+            "previous_text": prev or None,
+            "next_text": nxt or None,
+            "seed": SEED,
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "use_speaker_boost": True},
         }
     ).encode()
     req = urllib.request.Request(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}?output_format=mp3_44100_128",
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=mp3_44100_128",
         data=body,
         headers={"xi-api-key": key, "content-type": "application/json", "accept": "audio/mpeg"},
     )
@@ -67,20 +87,28 @@ def tts(text: str, dest: pathlib.Path) -> None:
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--script", choices=sorted(MODULES), default="walkthrough")
+    args = ap.parse_args()
+    mod, out_dir = load(args.script)
+    VOICE_ID, MODEL_ID = mod.VOICE_ID, mod.MODEL_ID
+    OUT = out_dir / "audio"
     OUT.mkdir(parents=True, exist_ok=True)
-    durations = {}
-    for cid, text in clips():
+    durations, lufs = {}, {}
+    for cid, text, prev, nxt in clips(mod.STEPS):
         mp3, meta = OUT / f"{cid}.mp3", OUT / f"{cid}.json"
-        h = hashlib.sha256(f"{VOICE_ID}|{MODEL_ID}|{text}".encode()).hexdigest()
+        h = hashlib.sha256(f"{VOICE_ID}|{MODEL_ID}|{SEED}|{prev}|{text}|{nxt}".encode()).hexdigest()
         cached = mp3.exists() and meta.exists() and json.loads(meta.read_text()).get("hash") == h
         if not cached:
             print(f"tts  {cid} ({len(text)} chars)", flush=True)
-            tts(text, mp3)
+            tts(VOICE_ID, MODEL_ID, text, prev, nxt, mp3)
             meta.write_text(json.dumps({"hash": h, "text": text}))
         durations[cid] = round(duration(mp3), 3)
-        print(f"{'ok  ' if cached else '    '} {cid}: {durations[cid]:.1f}s")
+        lufs[cid] = round(loudness(mp3), 2)
+        print(f"{'ok  ' if cached else '    '} {cid}: {durations[cid]:.1f}s {lufs[cid]:.1f} LUFS")
     (OUT / "durations.json").write_text(json.dumps(durations, indent=1))
-    print(f"total narration (one variant each): {sum(v for k, v in durations.items() if not k.endswith(('.fail', '.clean'))):.0f}s")
+    (OUT / "loudness.json").write_text(json.dumps(lufs, indent=1))
+    print(f"total narration (one variant each): {sum(v for k, v in durations.items() if "." not in k or k.endswith(('.pass', '.hint', '.ok'))):.0f}s")
 
 
 if __name__ == "__main__":

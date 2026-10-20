@@ -16,6 +16,10 @@ Routes:
   POST /ui/policy/compare     the same query as_of two dates
   GET  /ui/shell-token        token for the shell websocket
   WS   /ui/shell              bash in a PTY (only with PLEXUS_SHELL=1)
+  GET  /exec                  web/exec.html, the executive cut
+  POST /exec/veto             the two refund inserts against the policy_gate trigger
+  GET  /exec/audit/{ticket}   one ticket's decision chain, for an auditor
+  GET  /exec/numbers          measured token cost, base vs adopted harness
 """
 
 from __future__ import annotations
@@ -134,12 +138,26 @@ def harness():
     return h
 
 
+def _ensure_veto_trigger(conn: psycopg.Connection) -> None:
+    """seed.sql recreates support.refunds, which drops policy_gate's trigger;
+    put it back the way agents.sql attaches it."""
+    has = conn.execute(
+        "SELECT 1 FROM pg_trigger WHERE tgrelid = 'support.refunds'::regclass AND NOT tgisinternal"
+    ).fetchone()
+    if not has:
+        conn.execute(
+            "SELECT synapse.attach_agent_trigger('support.refunds', 'policy_gate', mode => 'inline', events => 'INSERT',"
+            " input_expr => $$json_build_object('ticket_id', NEW.ticket_id, 'amount_usd', NEW.amount_usd, 'note', NEW.note)::text$$)"
+        )
+
+
 @router.post("/ui/reset")
 def reset():
     if _run["status"] == "running":
         raise HTTPException(409, "a run is in progress")
     with psycopg.connect(DSN, autocommit=True) as conn:
         conn.execute((SCENARIO / "seed.sql").read_text())
+        _ensure_veto_trigger(conn)
     with _feed_lock:
         _feed.clear()
     return {"ok": True}
@@ -286,6 +304,106 @@ def tune(run: str | None = None):
         "edits": s.get("experience", {}).get("edits"),
         "lesson": {k: s.get("experience", {}).get(k) for k in ("cue", "lesson", "confidence")},
         "lesson_id": s.get("lesson_id"),
+    }
+
+
+# ----------------------------------------------------------------------------
+# executive cut
+# ----------------------------------------------------------------------------
+
+VETO_CASES = [
+    {"ticket_id": 104, "amount_usd": 49.00, "note": "customer changed their mind", "expect": "reject",
+     "why": "pro tier, charged 1 Jun, ticket 1 Aug: 61 days, v2 window is 30"},
+    {"ticket_id": 103, "amount_usd": 29.00, "note": "customer changed their mind", "expect": "accept",
+     "why": "pro tier, charged 28 Jun, ticket 20 Jul: 22 days, v2 window is 30"},
+]
+
+
+@router.get("/exec")
+def exec_page():
+    return FileResponse(WEB / "exec.html")
+
+
+@router.post("/exec/veto")
+def exec_veto():
+    """Each insert is its own transaction; the policy_gate trigger agent
+    decides inline, and a reject raises, so the row never lands."""
+    if _run["status"] == "running":
+        raise HTTPException(409, "a run is in progress")
+    with psycopg.connect(DSN, autocommit=True) as conn:
+        _ensure_veto_trigger(conn)
+        conn.execute("DELETE FROM support.refunds")
+    results = []
+    for c in VETO_CASES:
+        started = time.time()
+        try:
+            with psycopg.connect(DSN, autocommit=True) as conn:
+                conn.execute("SET statement_timeout = '300s'")
+                conn.execute(
+                    "INSERT INTO support.refunds (ticket_id, amount_usd, note) VALUES (%s, %s, %s)",
+                    (c["ticket_id"], c["amount_usd"], c["note"]),
+                )
+            results.append(c | {"landed": True, "error": None})
+        except psycopg.Error as exc:
+            msg = (exc.diag.message_primary if exc.diag else None) or str(exc)
+            results.append(c | {"landed": False, "error": msg})
+        results[-1]["seconds"] = round(time.time() - started, 1)
+    rows = [dict(zip(["id", "ticket_id", "amount_usd", "note"], r)) for r in q("SELECT id, ticket_id, amount_usd::float, note FROM support.refunds ORDER BY id")]
+    return {"cases": results, "rows": rows}
+
+
+@router.get("/exec/audit/{ticket_id}")
+async def exec_audit(ticket_id: int):
+    from app import PolicySearch, search_policy
+
+    cols = ["id", "tier", "created", "charge_date", "days", "subject", "refund_decision", "policy_version", "handled_at"]
+    r = q(
+        "SELECT t.id, c.tier, t.created_at::date::text, t.charge_date::text, t.created_at::date - t.charge_date,"
+        " t.subject, t.refund_decision, t.policy_version, t.handled_at::text"
+        " FROM support.tickets t JOIN support.customers c ON c.id = t.customer_id WHERE t.id = %s",
+        (ticket_id,),
+    )
+    if not r:
+        raise HTTPException(404, "no such ticket")
+    t = dict(zip(cols, r[0]))
+    t["audit"] = [a for (a,) in q("SELECT action FROM support.audit WHERE ticket_id = %s ORDER BY at", (ticket_id,))]
+    pol = await search_policy(PolicySearch(query="full refund within days of a charge", as_of=t["created"], k=1))
+    top = pol["chunks"][0] if pol["chunks"] else {}
+    text = top.get("text") or ""
+    clauses = text[text.find("1. "):] if "1. " in text else text  # the rules, not the document header
+    t["policy"] = {"as_of": t["created"], "in_force": pol["policy_in_force"], "text": clauses}
+    last = ROOT / ".last_execution"
+    t["execution_id"] = last.read_text().strip() if last.exists() else None
+    t["step"] = None
+    if t["execution_id"]:
+        steps = trajectory(t["execution_id"])["steps"]
+        for i, st in enumerate(steps):
+            if st["kind"] == "action" and "policy/search" in st["head"] and t["created"] in st["head"]:
+                query = re.search(r'query\\?": \\?"([^"\\]+)', st["head"])
+                t["step"] = {"n": i, "action": f"POST /policy/search  as_of {t['created']}" + (f"  query \"{query.group(1)}\"" if query else "")}
+                break
+    return t
+
+
+@router.get("/exec/numbers")
+def exec_numbers():
+    d = tune()
+    base = [r["tokens_in"] for r in d["rollouts"] if r["stage"] == "base"]
+    adopted = next(r for r in d["rollouts"] if r["label"] == d["adopted"])
+    tickets = q("SELECT count(*) FROM support.tickets")[0][0] or 1
+    base_avg = sum(base) / len(base)
+    return {
+        "run": d["run"],
+        "model": d["model"],
+        "tickets_per_run": tickets,
+        "base_tokens_in": round(base_avg),
+        "adopted_tokens_in": adopted["tokens_in"],
+        "base_per_ticket": round(base_avg / tickets),
+        "adopted_per_ticket": round(adopted["tokens_in"] / tickets),
+        "saving": round(1 - adopted["tokens_in"] / base_avg, 3),
+        "all_passed": all(r["passed"] for r in d["rollouts"]),
+        "rollouts": len(d["rollouts"]),
+        "lesson": d["lesson"],
     }
 
 
