@@ -15,6 +15,7 @@ Endpoints:
   POST /memory/recall              {user_id, query, as_of?}
   POST /trajectories/ingest        chunkshop pg_table cell over synapse runs
   POST /trajectories/search        {query, k?} -> similar past runs
+  GET  /  and /ui/*                the web UI (api/ui.py, loopback only)
 
 Run:  PLEXUS_DSN=postgresql://postgres:postgres@127.0.0.1:55441/plexus \
       .venv/bin/uvicorn app:app --host 0.0.0.0 --port 8766
@@ -31,7 +32,10 @@ import subprocess
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+import ui
 
 HERE = pathlib.Path(__file__).resolve().parent
 DSN = os.environ.get("PLEXUS_DSN", "postgresql://postgres:postgres@127.0.0.1:55441/plexus")
@@ -42,6 +46,9 @@ EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 EMBED_DIM = 384
 
 app = FastAPI(title="Plexus API", version="0.1.0")
+app.include_router(ui.router)
+app.add_api_websocket_route("/ui/shell", ui.shell_ws)
+app.mount("/static", StaticFiles(directory=HERE.parent / "web"), name="static")
 
 _rag = None
 _stele = None
@@ -206,6 +213,12 @@ async def policy_ingest():
 
 @app.post("/policy/search")
 async def policy_search(req: PolicySearch):
+    res = await search_policy(req)
+    ui.record_feed("policy_search", query=req.query, as_of=res["as_of"], policy_in_force=res["policy_in_force"])
+    return res
+
+
+async def search_policy(req: PolicySearch) -> dict[str, Any]:
     r = await rag()
     as_of = parse_as_of(req.as_of)
     res = await r.query(req.query, mode="naive", namespace=POLICY_NS, as_of=as_of, evolution_aware=True)

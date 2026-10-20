@@ -1,6 +1,8 @@
 # Plexus demo driver. Every target prints what it proves.
 #
 #   make up        start Postgres (pg_synapse + pgvector + pg_trgm) and the API
+#   make ui        restart the API with the web UI's shell dock on (loopback only)
+#   make demo-video  narrate (ElevenLabs), record (Playwright), mux -> demo/out/plexus-demo.mp4
 #   make ingest    policy corpus -> pg-raggraph (versioned) + chunkshop sink
 #   make seed      scenario tables, agents, skills, hints, inline veto trigger
 #   make run       triage_agent handles every ticket; prints the assertion
@@ -23,15 +25,21 @@ LLM_MODEL ?= qwen3:4b-instruct-2507-q4_K_M
 # As seen FROM Postgres (the container reaches the host through host.docker.internal).
 LLM_BASE_URL ?= http://host.docker.internal:11434/v1
 PSQL = psql "$(DSN)" -X -v ON_ERROR_STOP=1
+PLEXUS_SHELL ?= 0
 VENV = $(HERE)/api/.venv
 
-.PHONY: up down venv api ingest seed run veto memory tune status trajectories
+.PHONY: up down venv api ui demo-video ingest seed run veto memory tune status trajectories
 
 up:
 	docker compose -f $(HERE)/docker-compose.yml up -d --build
 	@until $(PSQL) -Atc "select 1" >/dev/null 2>&1; do sleep 1; done
 	@$(PSQL) -Atc "select 'postgres ready: pg_synapse ' || synapse.version() || ', ' || string_agg(extname||' '||extversion, ', ') from pg_extension where extname in ('vector','pg_trgm')"
 	$(MAKE) api
+
+# The web UI (api/ui.py + web/) with the shell dock enabled. Loopback only.
+ui:
+	$(MAKE) api PLEXUS_SHELL=1
+	@echo "ui: http://127.0.0.1:$(API_PORT)/"
 
 venv:
 	cd $(HERE)/api && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python \
@@ -40,7 +48,8 @@ venv:
 
 api:
 	@pkill -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)" 2>/dev/null || true
-	@(cd $(HERE)/api && PLEXUS_DSN="$(DSN)" setsid -f $(VENV)/bin/uvicorn app:app --host 0.0.0.0 --port $(API_PORT) > $(HERE)/api/api.log 2>&1 < /dev/null)
+	@while pgrep -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)" >/dev/null; do sleep 0.2; done
+	@(cd $(HERE)/api && PLEXUS_DSN="$(DSN)" PLEXUS_SHELL="$(PLEXUS_SHELL)" setsid -f $(VENV)/bin/uvicorn app:app --host 0.0.0.0 --port $(API_PORT) > $(HERE)/api/api.log 2>&1 < /dev/null)
 	@until curl -sf http://127.0.0.1:$(API_PORT)/health >/dev/null; do sleep 1; done
 	@echo "api ready: http://127.0.0.1:$(API_PORT)  (log: api/api.log)"
 
@@ -100,6 +109,13 @@ tune:
 	  --library-dsn "$(DSN)" --library-agent triage_agent --apply \
 	  --out $(HERE)/tuned/$$(date +%Y%m%d-%H%M%S)
 	@$(PSQL) -c "select lesson_id, cue, lesson, confidence from synapse.lessons where agent='triage_agent' order by lesson_id"
+
+# Recorded walkthrough. Needs `make ui` running, the agent's LLM up, and
+# ELEVENLABS_API_KEY in the environment. Clips are cached; the run is live.
+demo-video:
+	$(VENV)/bin/python $(HERE)/demo/voice.py
+	$(VENV)/bin/python $(HERE)/demo/record.py --url http://127.0.0.1:$(API_PORT)/
+	$(VENV)/bin/python $(HERE)/demo/mux.py
 
 status:
 	@$(PSQL) -c "select agent_name, status, tokens_in, tokens_out, duration_ms, started_at from synapse.executions order by started_at desc limit 10"

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus</title>
+<link rel="stylesheet" href="/static/vendor/xterm.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">◎</span> Plexus <span class="tag">one Postgres: the agent, its retrieval, its memory, and the loop that tunes it</span></div>
+  <div class="chips">
+    <span class="chip" id="chip-model">model …</span>
+    <span class="chip" id="chip-ext">pg_synapse …</span>
+    <span class="chip verdict" id="chip-verdict">…</span>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="rail" id="rail">
+    <a data-sec="stack"><b>1</b> The stack</a>
+    <a data-sec="policy"><b>2</b> Policy time-travel</a>
+    <a data-sec="harness"><b>3</b> Harness as data</a>
+    <a data-sec="run"><b>4</b> Run the agent</a>
+    <a data-sec="trajectory"><b>5</b> Trajectory</a>
+    <a data-sec="tuner"><b>6</b> The tuner</a>
+    <div class="rail-foot">harness2 ideas, running inside Postgres</div>
+  </nav>
+
+  <main id="main">
+    <!-- 1 stack -->
+    <section id="sec-stack" class="sec">
+      <h1>Four projects, one Postgres</h1>
+      <p class="lede">The agent loop, versioned retrieval, evidence-backed memory and ingest all live in the same database. The LLM is the only thing outside it.</p>
+      <div class="stack">
+        <div class="pg">
+          <div class="pg-title">PostgreSQL 17 <span class="muted">(plexus-db)</span></div>
+          <div class="cards">
+            <div class="card c-syn" id="card-synapse"><h3>pg_synapse</h3><p>Agent runtime as an extension. <code>SELECT synapse.execute(...)</code> runs the tool loop inside the backend.</p><ul><li>harness components</li><li>trajectories + lessons</li><li>sql / http tools</li></ul></div>
+            <div class="card c-rag" id="card-rag"><h3>pg-raggraph</h3><p>Versioned retrieval on pgvector + pg_trgm. Effective dates and supersession, queried <code>as_of</code> a date.</p></div>
+            <div class="card c-stele" id="card-stele"><h3>stele</h3><p>Memory with evidence. Every belief cites a <code>stele://</code> artifact; corrections supersede, history stays queryable.</p></div>
+            <div class="card c-chunk" id="card-chunk"><h3>chunkshop</h3><p>Ingest cells. Policy docs and past agent runs become vector tables.</p></div>
+          </div>
+        </div>
+        <div class="outside">
+          <div class="card c-llm" id="card-llm"><h3>LLM</h3><p id="llm-detail">…</p></div>
+          <div class="card c-tuner" id="card-tuner"><h3>Tuner <span class="muted">(bench/tune.py)</span></h3><p>The harness2 outer loop: roll, propose, probe, compose, reflect. Edits the harness, never the weights.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 policy -->
+    <section id="sec-policy" class="sec">
+      <h1>The policy changed on 1 July</h1>
+      <p class="lede">Eight tickets straddle the change. A refund must be decided under the policy that was in force <em>on the ticket's date</em>, not the newest one.</p>
+      <div class="timeline" id="timeline"></div>
+      <div class="row">
+        <button class="btn" id="btn-compare">Search "refund window" as of 20 May and 20 July</button>
+      </div>
+      <div class="compare" id="compare"></div>
+    </section>
+
+    <!-- 3 harness -->
+    <section id="sec-harness" class="sec">
+      <h1>The harness is data</h1>
+      <p class="lede">harness2's core idea: hold the model fixed and optimize what surrounds it. Here every component is a row in <code>synapse.*</code>, priced by when it costs context.</p>
+      <div class="meter"><div class="meter-label">always-on context <span id="meter-text"></span></div><div class="meter-bar"><div id="meter-fill"></div></div></div>
+      <div class="hgrid" id="hgrid"></div>
+      <pre class="hbody" id="hbody"></pre>
+    </section>
+
+    <!-- 4 run -->
+    <section id="sec-run" class="sec">
+      <h1>Run the agent</h1>
+      <p class="lede"><code>SELECT synapse.execute('triage_agent', task)</code>. One SQL call, one transaction: the agent's writes appear when it commits. What you can watch live is the agent calling out for policy.</p>
+      <div class="row">
+        <button class="btn ghost" id="btn-reset">Reset tickets</button>
+        <button class="btn primary" id="btn-run">Run triage_agent</button>
+        <span class="runstat" id="runstat">idle</span>
+      </div>
+      <div class="runwrap">
+        <div class="tablewrap"><table class="tickets" id="tickets"></table></div>
+        <div class="side">
+          <h4>Live: the agent calling the policy service</h4>
+          <ul class="feed" id="feed"><li class="muted">no calls yet</li></ul>
+          <h4>The five conditions</h4>
+          <ul class="conds" id="conds"></ul>
+          <div class="outcome" id="outcome"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 trajectory -->
+    <section id="sec-trajectory" class="sec">
+      <h1>The trajectory is the evidence</h1>
+      <p class="lede"><code>synapse.trajectory(execution_id)</code> renders a run for a human or an improver: every action, every observation, every error and the hint that fixed it.</p>
+      <div class="row"><label class="tog"><input type="checkbox" id="only-actions" checked> actions, errors and hints only</label><span class="muted" id="traj-id"></span></div>
+      <ol class="traj" id="traj"></ol>
+    </section>
+
+    <!-- 6 tuner -->
+    <section id="sec-tuner" class="sec">
+      <h1>Propose, probe, compose</h1>
+      <p class="lede" id="tune-lede">…</p>
+      <div class="tunegrid">
+        <div class="chart" id="chart"></div>
+        <div class="lesson" id="lesson"></div>
+      </div>
+      <h4>What the adopted harness changed</h4>
+      <pre class="diff" id="diff"></pre>
+    </section>
+  </main>
+
+  <aside class="dock" id="dock">
+    <div class="dock-head">
+      <span>Shell <span class="muted">(this machine, plexus/)</span></span>
+      <span id="shell-state" class="muted">…</span>
+    </div>
+    <div class="quick" id="quick">
+      <button data-cmd="make status">make status</button>
+      <button data-cmd="psql $DSN -c &quot;select synapse.version()&quot;">synapse.version()</button>
+      <button data-cmd="psql $DSN -c &quot;select lesson_id, left(cue, 70) cue, confidence from synapse.lessons&quot;">lessons</button>
+      <button data-cmd="git log --oneline -3">git log</button>
+    </div>
+    <div class="term" id="term"></div>
+  </aside>
+</div>
+
+<div id="spot" class="spot hidden"></div>
+<div id="spot-cap" class="spot-cap hidden"></div>
+<div id="caption" class="caption hidden"></div>
+
+<script src="/static/vendor/xterm.js"></script>
+<script src="/static/vendor/addon-fit.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

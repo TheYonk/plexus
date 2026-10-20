@@ -8,3 +8,4 @@ __pycache__/
 tuned/
 # skill output
 skill-output/
+demo/out/

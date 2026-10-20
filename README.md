@@ -60,6 +60,24 @@ make tune K=2  # Propose-Probe-Compose; lessons land in synapse.lessons
 make down
 ```
 
+### Web UI and recorded walkthrough
+
+```bash
+make ui          # restarts the API with the shell dock on; open http://127.0.0.1:8766/
+make demo-video  # ElevenLabs narration + Playwright recording -> demo/out/plexus-demo.mp4
+```
+
+The UI shows the stack, policy time-travel, the harness as data, a live run
+(the agent's policy calls stream in while `synapse.execute` runs), the
+trajectory, and the tuner's last run, next to a real shell on this machine.
+Every UI route answers loopback clients only; the shell also needs
+`PLEXUS_SHELL=1` (set by `make ui`) and a per-process token. `demo-video`
+needs `ELEVENLABS_API_KEY`; the narration lives in `demo/script.py`. Design
+and notes: `docs/webapp-demo-design.md`.
+
+A stronger agent model is one profile row away, e.g. Qwen3.6-35B-A3B on
+vLLM: `select synapse.llm_profile_set('llm','openai','qwen36-nvfp4','http://<host>:8000/v1',NULL,'{}')`.
+
 Ports: Postgres `55441`, API `8766`. The database reaches Ollama and the
 API through `host.docker.internal`; `PG_SYNAPSE_HTTP_ALLOW` on the
 container lets `http_post` past pg_synapse's SSRF guard.
