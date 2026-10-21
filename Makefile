@@ -4,6 +4,8 @@
 #   make ui        restart the API with the web UI's shell dock on (loopback only)
 #   make demo-video  narrate (ElevenLabs), record (Playwright), mux -> demo/out/plexus-demo.mp4
 #   make exec-video  the executive cut (customer outcome) -> demo/out/exec/plexus-exec.mp4
+#   make deck-video  the presentation (web/deck.html, live policy change) narrated -> demo/out/deck/plexus-deck.mp4
+#   make deck-pptx   the presentation as a .pptx leave-behind, with speaker notes -> demo/out/deck/plexus-deck.pptx
 #   make ingest    policy corpus -> pg-raggraph (versioned) + chunkshop sink
 #   make seed      scenario tables, agents, skills, hints, inline veto trigger
 #   make run       triage_agent handles every ticket; prints the assertion
@@ -29,7 +31,7 @@ PSQL = psql "$(DSN)" -X -v ON_ERROR_STOP=1
 PLEXUS_SHELL ?= 0
 VENV = $(HERE)/api/.venv
 
-.PHONY: up down venv api ui demo-video exec-video ingest seed run veto memory tune status trajectories
+.PHONY: up down venv api ui demo-video exec-video deck-video deck-pptx ingest seed run veto memory tune status trajectories
 
 up:
 	docker compose -f $(HERE)/docker-compose.yml up -d --build
@@ -45,7 +47,7 @@ ui:
 venv:
 	cd $(HERE)/api && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python \
 	  -e "$(HERE)/../stele[postgres,chunkshop,postgres-graph]" -e "$(HERE)/../pg-raggraph" \
-	  -e "$(HERE)/../chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]"
+	  -e "$(HERE)/../chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]" python-pptx
 
 api:
 	@pkill -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)" 2>/dev/null || true
@@ -122,6 +124,14 @@ exec-video:
 	$(VENV)/bin/python $(HERE)/demo/voice.py --script exec
 	$(VENV)/bin/python $(HERE)/demo/record.py --script exec --url http://127.0.0.1:$(API_PORT)/
 	$(VENV)/bin/python $(HERE)/demo/mux.py --script exec
+
+deck-video:
+	$(VENV)/bin/python $(HERE)/demo/voice.py --script deck
+	$(VENV)/bin/python $(HERE)/demo/record.py --script deck --url http://127.0.0.1:$(API_PORT)/
+	$(VENV)/bin/python $(HERE)/demo/mux.py --script deck
+
+deck-pptx:
+	$(VENV)/bin/python $(HERE)/demo/export_pptx.py --url http://127.0.0.1:$(API_PORT)/
 
 status:
 	@$(PSQL) -c "select agent_name, status, tokens_in, tokens_out, duration_ms, started_at from synapse.executions order by started_at desc limit 10"

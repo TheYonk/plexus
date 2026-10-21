@@ -7,7 +7,7 @@ speed-ups, so voice and screen stay in step. Every clip is gained to the
 same loudness (from voice.py's loudness.json) and gets a short fade in and
 out, so no clip jumps out and no clip edge clicks; a limiter guards peaks.
 
-    api/.venv/bin/python demo/mux.py [--script walkthrough|exec] [--offset 0.0]
+    api/.venv/bin/python demo/mux.py [--script walkthrough|exec|deck] [--offset 0.0]
 
 --offset shifts all audio (seconds, + = later) if the video clock started
 slightly before record.py's clock.

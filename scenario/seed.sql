@@ -69,3 +69,14 @@ INSERT INTO support.tickets (id, customer_id, created_at, subject, body, charge_
    'I cannot log in to my free account and I need it urgently for a demo.', NULL),
   (108, 2, '2026-07-08 08:00+00', 'How do I rotate API keys?',
    'Where in the settings do I rotate an API key?', NULL);
+
+-- Recreating support.refunds dropped policy_gate's inline trigger. Put it
+-- back when the agent already exists (on a first seed, agents.sql attaches it).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM synapse.agents WHERE name = 'policy_gate') THEN
+    PERFORM synapse.attach_agent_trigger('support.refunds', 'policy_gate',
+      mode => 'inline', events => 'INSERT',
+      input_expr => $x$json_build_object('ticket_id', NEW.ticket_id, 'amount_usd', NEW.amount_usd, 'note', NEW.note)::text$x$);
+  END IF;
+END $$;

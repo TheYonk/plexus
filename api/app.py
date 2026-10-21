@@ -118,9 +118,9 @@ def parse_as_of(value: str | None) -> dt.datetime | None:
     return d
 
 
-def read_policy_docs() -> list[dict[str, Any]]:
+def read_policy_docs(folder: pathlib.Path = POLICY_DIR) -> list[dict[str, Any]]:
     docs = []
-    for p in sorted(POLICY_DIR.glob("*.md")):
+    for p in sorted(folder.glob("*.md")):
         text = p.read_text(encoding="utf-8")
         m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", text, re.S)
         if not m:
@@ -185,6 +185,17 @@ async def policy_ingest():
     if not docs:
         raise HTTPException(404, f"no policy docs under {POLICY_DIR}")
     r = await rag()
+    out = await ingest_docs(docs)
+    # chunkshop sink: the same corpus as a flat vector table (plexus.policy_chunks)
+    cell = run_cell("policy.yaml")
+    status = await r.status(POLICY_NS)
+    return {**out, "graph": status, "chunkshop": cell}
+
+
+async def ingest_docs(docs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Policy docs into pg-raggraph with their effective dates; a doc that
+    names what it supersedes closes the old one's window at its own start."""
+    r = await rag()
     records = []
     for d in docs:
         md: dict[str, Any] = {"version_label": d.get("version_label"), "file": d["file"]}
@@ -205,10 +216,7 @@ async def policy_ingest():
                 namespace=POLICY_NS,
             )
             superseded.append({"old": d["supersedes"], "new": d["source_id"], **res})
-    # chunkshop sink: the same corpus as a flat vector table (plexus.policy_chunks)
-    cell = run_cell("policy.yaml")
-    status = await r.status(POLICY_NS)
-    return {"ingested": [d["source_id"] for d in docs], "superseded": superseded, "graph": status, "chunkshop": cell}
+    return {"ingested": [d["source_id"] for d in docs], "superseded": superseded}
 
 
 @app.post("/policy/search")

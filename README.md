@@ -66,6 +66,8 @@ make down
 make ui          # restarts the API with the shell dock on; open http://127.0.0.1:8766/
 make demo-video  # ElevenLabs narration + Playwright recording -> demo/out/plexus-demo.mp4
 make exec-video  # the executive cut (customer outcome, http://127.0.0.1:8766/exec) -> demo/out/exec/plexus-exec.mp4
+make deck-video  # the presentation (http://127.0.0.1:8766/deck), narrated -> demo/out/deck/plexus-deck.mp4
+make deck-pptx   # the presentation as a .pptx with speaker notes -> demo/out/deck/plexus-deck.pptx
 ```
 
 The UI shows the stack, policy time-travel, the harness as data, a live run
@@ -75,6 +77,12 @@ trajectory, and the tuner's last run, next to a real shell on this machine.
 veto of a bad refund, one decision explained end to end, the measured
 tuning saving, Plexus against harness2 and a typical agent stack, and a
 value calculator whose assumptions are on screen.
+`/deck` is a 12-slide presentation to give live: arrows or space to move,
+`S` for a presenter window with notes and a timer, `F` for fullscreen. Its
+centrepiece is a live policy change: a refund passes under v2, refund
+policy v3 (`scenario/policy-next/`) is published as one document, the same
+refund is vetoed under v3, and a July ticket is still judged by v2. "Reset
+to v2" puts everything back. Design and notes: `docs/deck-design.md`.
 Every UI route answers loopback clients only; the shell also needs
 `PLEXUS_SHELL=1` (set by `make ui`) and a per-process token. `demo-video`
 needs `ELEVENLABS_API_KEY`; the narration lives in `demo/script.py`. Design

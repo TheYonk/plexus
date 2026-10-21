@@ -49,7 +49,7 @@ STEPS = [
         "say": (
             "Question one. In Plexus, the agent doesn't sit next to the database. It sits inside it. "
             "There's an agent attached to the refunds table as a trigger. Before a refund can commit, it "
-            "checks the policy that was in force on the day the ticket came in. Let's try two refunds."
+            "checks the policy that was in effect on the day the ticket came in. Let's try two refunds."
         ),
         "after": [f"{D}.clearSpot()", "@veto", "@pause:0.6"],
     },
@@ -82,7 +82,7 @@ STEPS = [
         ],
         "say": (
             "Question two. Explain a decision. Here's ticket one oh four. What the customer asked. The "
-            "policy that was in force on that exact day: version two, where past sixty days you get "
+            "policy that was in effect on that exact day: version two, where past sixty days you get "
             "account credit, not cash. The exact step in the agent's run where it looked that up. What it "
             "decided, credit, and the audit line it wrote. "
             "All of it comes out of one database. [serious] When someone asks why the AI did that, this "

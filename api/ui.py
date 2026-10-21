@@ -20,6 +20,11 @@ Routes:
   POST /exec/veto             the two refund inserts against the policy_gate trigger
   GET  /exec/audit/{ticket}   one ticket's decision chain, for an auditor
   GET  /exec/numbers          measured token cost, base vs adopted harness
+  GET  /deck                  web/deck.html, the presentation
+  GET  /deck/policy/state     is refund v3 published, last live results
+  POST /deck/policy/reset     unpublish v3 (v2 back in force), forget results
+  POST /deck/policy/publish   ingest refund v3, superseding v2 from 1 October
+  POST /deck/policy/try       one refund through the veto: {case, label}
 """
 
 from __future__ import annotations
@@ -405,6 +410,121 @@ def exec_numbers():
         "rollouts": len(d["rollouts"]),
         "lesson": d["lesson"],
     }
+
+
+# ----------------------------------------------------------------------------
+# deck: the live policy change
+# ----------------------------------------------------------------------------
+
+POLICY_NEXT = SCENARIO / "policy-next"
+V3 = "policy:refund-v3"
+DECK_CASES = {
+    # created on the fly and removed again, so the 8-ticket benchmark never sees it
+    "oct": {"ticket_id": 109, "amount_usd": 39.00, "created": "2026-10-10", "charge": "2026-09-15", "days": 25},
+    "jul": {"ticket_id": 103, "amount_usd": 29.00, "created": "2026-07-20", "charge": "2026-06-28", "days": 22},
+}
+_deck: dict[str, Any] = {"results": {}, "publish": None}
+
+
+def x(sql: str, params: tuple | None = None) -> None:
+    with psycopg.connect(DSN, autocommit=True) as conn:
+        conn.execute(sql, params)
+
+
+def _v3_published() -> bool:
+    return bool(q("SELECT count(*) FROM documents WHERE namespace = 'policy' AND source_path = %s", (V3,))[0][0])
+
+
+async def _in_force(day: str) -> str | None:
+    from app import PolicySearch, search_policy
+
+    res = await search_policy(PolicySearch(query="full refund within days of a charge", as_of=day, k=1))
+    return res["policy_in_force"]
+
+
+@router.get("/deck")
+def deck_page():
+    return FileResponse(WEB / "deck.html")
+
+
+@router.get("/deck/policy/state")
+def deck_state():
+    return {"v3": _v3_published(), "results": _deck["results"], "publish": _deck["publish"]}
+
+
+@router.post("/deck/policy/reset")
+async def deck_reset():
+    from app import rag
+
+    r = await rag()
+    await r.delete_document(V3, namespace="policy")
+    x("UPDATE documents SET effective_to = NULL WHERE namespace = 'policy' AND source_path = 'policy:refund-v2'")
+    x("DELETE FROM support.refunds WHERE ticket_id = 109")
+    x("DELETE FROM support.tickets WHERE id = 109")
+    _deck.update(results={}, publish=None)
+    return {"v3": _v3_published(), "in_force_oct": await _in_force("2026-10-10")}
+
+
+@router.post("/deck/policy/publish")
+async def deck_publish():
+    from app import ingest_docs, read_policy_docs
+
+    started = time.time()
+    out = await ingest_docs(read_policy_docs(POLICY_NEXT))
+    _deck["publish"] = {
+        **out,
+        "seconds": round(time.time() - started, 1),
+        "in_force": {d: await _in_force(d) for d in ("2026-10-10", "2026-07-20")},
+    }
+    return _deck["publish"]
+
+
+class DeckTry(BaseModel):
+    case: str = "oct"
+    label: str = "before"
+
+
+def _deck_insert(c: dict[str, Any]) -> dict[str, Any]:
+    """One refund through the policy_gate trigger, then leave no trace."""
+    tid = c["ticket_id"]
+    with psycopg.connect(DSN, autocommit=True) as conn:
+        _ensure_veto_trigger(conn)
+        conn.execute("DELETE FROM support.refunds WHERE ticket_id = %s", (tid,))
+        if tid == 109:
+            conn.execute(
+                "INSERT INTO support.tickets (id, customer_id, created_at, subject, body, charge_date)"
+                " VALUES (109, 5, %s, 'Refund request', 'Charged on 15 September, changed my mind. Refund please.', %s)"
+                " ON CONFLICT (id) DO NOTHING",
+                (f"{c['created']} 12:00+00", c["charge"]),
+            )
+    started = time.time()
+    try:
+        with psycopg.connect(DSN, autocommit=True) as conn:
+            conn.execute("SET statement_timeout = '300s'")
+            conn.execute(
+                "INSERT INTO support.refunds (ticket_id, amount_usd, note) VALUES (%s, %s, 'customer changed their mind')",
+                (tid, c["amount_usd"]),
+            )
+        res = {"landed": True, "error": None}
+    except psycopg.Error as exc:
+        res = {"landed": False, "error": (exc.diag.message_primary if exc.diag else None) or str(exc)}
+    finally:
+        x("DELETE FROM support.refunds WHERE ticket_id = %s", (tid,))
+        x("DELETE FROM support.tickets WHERE id = 109")
+    return res | {"seconds": round(time.time() - started, 1)}
+
+
+@router.post("/deck/policy/try")
+async def deck_try(req: DeckTry):
+    if _run["status"] == "running":
+        raise HTTPException(409, "a run is in progress")
+    c = DECK_CASES.get(req.case)
+    if not c:
+        raise HTTPException(404, f"no case {req.case!r}")
+    in_force = await _in_force(c["created"])
+    res = await asyncio.to_thread(_deck_insert, c)
+    _deck["results"][req.label] = {"case": req.case, **c, "in_force": in_force, **res}
+    return _deck["results"][req.label]
 
 
 # ----------------------------------------------------------------------------

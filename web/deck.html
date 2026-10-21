@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/deck.css">
+</head>
+<body class="deck-body">
+<div class="viewport" id="viewport">
+<div class="stage" id="stage">
+
+  <!-- 1 title -->
+  <section class="slide s-title" data-title="Plexus">
+    <div class="title-mark">◎</div>
+    <h1 class="mega">Plexus</h1>
+    <p class="lede-xl">AI agents that run inside your database, and get better from their own history.</p>
+    <p class="byline">Built on pg_synapse, pg-raggraph, stele and chunkshop. One Postgres.</p>
+    <aside class="notes">Plexus is a demo of one idea: put the agent where the data already lives. Everything you will see runs inside a single Postgres. The only thing outside is the model.</aside>
+  </section>
+
+  <!-- 2 problem -->
+  <section class="slide" data-title="Five systems, one agent">
+    <h2>A typical agent touches five systems</h2>
+    <p class="sub">Every arrow is a place where a run can half-finish, disagree with the others, or leave nothing behind to explain it.</p>
+    <div class="sprawl" id="sprawl">
+      <div class="node n-app"><b>App server</b><span>the agent loop</span></div>
+      <div class="node n-vec"><b>Vector store</b><span>retrieval</span></div>
+      <div class="node n-mem"><b>Memory service</b><span>what it learned</span></div>
+      <div class="node n-eval"><b>Eval notebook</b><span>how it improves</span></div>
+      <div class="node n-db"><b>Database</b><span>the actual data</span></div>
+      <svg class="wires" viewBox="0 0 1640 580" aria-hidden="true">
+        <path d="M820 60 L200 270"/><path d="M820 60 L1440 270"/><path d="M820 60 L500 480"/><path d="M820 60 L1140 480"/>
+        <path d="M200 270 L1140 480"/><path d="M1440 270 L1140 480"/><path d="M500 480 L1440 270"/><path d="M200 270 L500 480"/>
+      </svg>
+    </div>
+    <aside class="notes">This is the shape of almost every agent demo. The agent lives in an app server, retrieval in a vector store, memory in a third service, and improvement in somebody's notebook. Five systems that each keep their own version of what happened.</aside>
+  </section>
+
+  <!-- 3 one postgres -->
+  <section class="slide" data-title="One Postgres">
+    <h2>Plexus puts all of it in one Postgres</h2>
+    <div class="arch">
+      <div class="pgbox" id="pgbox">
+        <div class="pglabel">Postgres</div>
+        <div class="comp c-syn" id="c-syn"><b>pg_synapse</b><span>The agent runtime. <code>SELECT synapse.execute(...)</code> runs the whole tool-calling loop in one transaction.</span></div>
+        <div class="comp c-rag" id="c-rag"><b>pg-raggraph</b><span>Versioned retrieval. Documents carry effective dates, so you can ask what was true on a given day.</span></div>
+        <div class="comp c-stele" id="c-stele"><b>stele</b><span>Memory with receipts. Every belief points at its evidence; a correction supersedes, it never erases.</span></div>
+        <div class="comp c-chunk" id="c-chunk"><b>chunkshop</b><span>Ingest for policy documents and for the agent's own past runs.</span></div>
+      </div>
+      <div class="outside-box" id="llmbox"><b>The model</b><span>The only thing outside. Here, Qwen3.6 35B on a DGX Spark. It is a row in a table; swapping it is an UPDATE.</span></div>
+    </div>
+    <aside class="notes">Four Postgres pieces. pg_synapse runs the agent, pg-raggraph does time-aware retrieval, stele is memory with evidence, chunkshop ingests. The model sits outside and is just configuration.</aside>
+  </section>
+
+  <!-- 4 harness2 -->
+  <section class="slide" data-title="The harness2 idea">
+    <h2>Hold the model fixed. Improve everything around it.</h2>
+    <p class="sub">Google Research's harness2 calls the prompt, rules, tools and hints around a model its harness, and tunes that instead of the weights.</p>
+    <div class="h2grid">
+      <div class="harness-list" id="harness-list">
+        <div>System prompt</div><div>Guardrails</div><div>Memory</div><div>Skills</div><div>Tool hints</div><div>Lessons</div>
+      </div>
+      <ol class="loop" id="loop">
+        <li><b>Propose</b><span>An improver reads past runs and suggests edits: how the agent works, and what an expert in the domain would know.</span></li>
+        <li><b>Probe</b><span>Each edit runs once against the real task, in its own throwaway copy of the database.</span></li>
+        <li><b>Compose</b><span>The best ideas are combined; the cheapest version that still passes every check is adopted.</span></li>
+        <li><b>Reflect</b><span>One lesson is written down for the next round, citing the run it came from.</span></li>
+      </ol>
+    </div>
+    <aside class="notes">This is the part borrowed from harness2. Stop trying to make the model smarter. Treat everything around it as the thing you optimize, and do it with evidence from real runs.</aside>
+  </section>
+
+  <!-- 5 harness as data -->
+  <section class="slide" data-title="The harness is data">
+    <h2>In Plexus the harness is rows, and every row has a price</h2>
+    <p class="sub">Context is the cost. Each component says when it is paid for.</p>
+    <table class="cost" id="cost">
+      <thead><tr><th>Component</th><th>When it costs context</th><th>In this agent</th></tr></thead>
+      <tbody>
+        <tr><td>System prompt, guardrails, memory, lessons</td><td>Always, capped by the database</td><td id="h-always">…</td></tr>
+        <tr><td>Skills</td><td>A one-line trigger until the agent loads the full playbook</td><td id="h-skills">…</td></tr>
+        <tr><td>Tool hints</td><td>Only when a tool call fails, appended to the error</td><td id="h-hints">…</td></tr>
+        <tr><td>Lessons</td><td>Written by the tuner, each citing its source run</td><td id="h-lessons">…</td></tr>
+      </tbody>
+    </table>
+    <div class="meter-xl" id="meter"><div class="bar"><i id="h-bar"></i></div><span id="h-meter">…</span></div>
+    <aside class="notes">Because the harness is data, the database can enforce a budget: always-on context is capped, and the tuner can only adopt an edit that fits. Skills and hints cost nothing until they are needed.</aside>
+  </section>
+
+  <!-- 6 live policy change -->
+  <section class="slide s-live" data-title="Live: the policy changes">
+    <div class="live-tag">Live</div>
+    <h2>The policy changed. The next refund obeyed it.</h2>
+    <p class="sub">Legal shortens the refund window from 30 days to 21 from 1 October by publishing one document. No prompt edit, no redeploy.</p>
+    <div class="tl" id="tl">
+      <div class="tl-band b-v1"><b>v1</b> 14 days</div>
+      <div class="tl-band b-v2" id="band-v2"><b>v2</b> 30 days</div>
+      <div class="tl-band b-v3" id="band-v3"><b>v3</b> 21 days</div>
+      <div class="tl-pin" id="pin-103" style="--d:200"><i></i>ticket 103<br>20 Jul</div>
+      <div class="tl-pin" id="pin-109" style="--d:282"><i></i>ticket 109<br>10 Oct</div>
+      <div class="tl-months"><span style="--d:0">Jan</span><span style="--d:90">Apr</span><span style="--d:181">Jul</span><span style="--d:273">Oct</span><span style="--d:364">Dec</span></div>
+    </div>
+    <ol class="steps" id="steps">
+      <li id="st-before"><div class="st-h"><b>Refund ticket 109</b><span>$39, charged 15 Sep, opened 10 Oct: 25 days</span></div>
+        <button class="btn primary" data-act="before">Try the refund</button><div class="st-r" id="r-before"></div></li>
+      <li id="st-publish"><div class="st-h"><b>Publish refund policy v3</b><span>one document into pg-raggraph, superseding v2 from 1 Oct</span></div>
+        <button class="btn primary" data-act="publish">Publish v3</button><div class="st-r" id="r-publish"></div></li>
+      <li id="st-after"><div class="st-h"><b>The same refund, again</b><span>and a July ticket, still judged by the rules of its day</span></div>
+        <button class="btn primary" data-act="after">Try it again</button><div class="st-r" id="r-after"></div><div class="st-r" id="r-jul"></div></li>
+    </ol>
+    <button class="reset-link" id="btn-policy-reset">Reset to v2</button>
+    <aside class="notes">Click Try the refund: the agent on the refunds table looks up the policy in force on 10 October, which is v2 with 30 days, and the 25-day refund commits. Publish v3: one document, a tenth of a second. Try it again: same refund, now rejected inside the transaction with v3 as the reason. Ticket 103 from July still gets v2. Each refund takes 5 to 10 seconds because the gate is an LLM call. Reset to v2 afterwards; nothing is left in the tables.</aside>
+  </section>
+
+  <!-- 7 audit -->
+  <section class="slide" data-title="Explain any decision">
+    <h2>Any decision, explained from one query</h2>
+    <p class="sub">Ticket <b id="aud-id">104</b>, end to end, out of the same database the agent wrote to.</p>
+    <ol class="chain" id="chain"></ol>
+    <aside class="notes">This is what you hand an auditor or a customer. The ticket, the policy in force that day, the exact step where the agent looked it up, what it decided, and the audit line. No log search across services.</aside>
+  </section>
+
+  <!-- 8 tuning -->
+  <section class="slide" data-title="It got cheaper">
+    <h2>The tuner made the same agent 37% cheaper</h2>
+    <p class="sub">Measured on Qwen3.6 35B, eight tickets per run. Every rollout passed every check.</p>
+    <div class="bignums" id="bignums">
+      <div><span>Input tokens per ticket, base harness</span><b id="n-base">…</b></div>
+      <div><span>After tuning</span><b id="n-after" class="good">…</b></div>
+      <div><span>Rollouts that passed</span><b id="n-pass">…</b></div>
+    </div>
+    <div class="lesson" id="x-lesson"></div>
+    <aside class="notes">The adopted change was readable: instead of describing the SQL rules in prose, the harness hands the agent one copyable statement per table. That stopped the retries on the first write. The tuner also wrote down why, as a lesson for the next round.</aside>
+  </section>
+
+  <!-- 9 vs -->
+  <section class="slide" data-title="Why not harness2 alone">
+    <h2>harness2 is the method. Plexus is where it runs.</h2>
+    <table class="vs2" id="vs2">
+      <thead><tr><th></th><th>Typical agent stack</th><th>harness2 on its own</th><th class="me">Plexus</th></tr></thead>
+      <tbody>
+        <tr><td>A run that dies halfway</td><td>Partial writes to clean up</td><td>Offline, not its job</td><td class="me">One transaction, all or nothing</td></tr>
+        <tr><td>Policy on a given date</td><td>The newest document wins</td><td>Not its job</td><td class="me">Retrieval as of the ticket date</td></tr>
+        <tr><td>Stopping a bad write</td><td>Code review and hope</td><td>Not its job</td><td class="me">A trigger agent vetoes it in the transaction</td></tr>
+        <tr><td>What tuning learns from</td><td>Nothing, or a separate eval product</td><td>Benchmark rollouts</td><td class="me">Your agent's own trajectories</td></tr>
+        <tr><td>Adopting a change</td><td>A redeploy</td><td>Copy files into your app</td><td class="me">An UPDATE, with the evidence attached</td></tr>
+        <tr><td>Systems to run and secure</td><td>Four to six</td><td>One, plus all of the above</td><td class="me">Postgres and a model endpoint</td></tr>
+      </tbody>
+    </table>
+    <aside class="notes">harness2 is a good method; this is not a knock on it. It tunes offline and hands you files. Plexus runs the same loop where the work happens, so the result is a transaction, a veto and an update, not a pile of files to wire up.</aside>
+  </section>
+
+  <!-- 10 limits -->
+  <section class="slide" data-title="The honest part">
+    <h2>What it does not do yet</h2>
+    <ul class="limits">
+      <li><b>Model choice still matters.</b> A 4B model tops out at 3 of 5 checks on this task. The 35B model passes; the tuner makes it cheaper.</li>
+      <li><b>The veto is an LLM call per insert.</b> 5 to 10 seconds. Right for refunds, too slow for a hot write path.</li>
+      <li><b>Long runs sometimes quit early.</b> The agent occasionally stops before every ticket is done. The checks catch it; the harness does not prevent it yet.</li>
+      <li><b>The dollar figures are assumptions.</b> The wrong-policy rate in the business case is an input, not a measurement.</li>
+    </ul>
+    <aside class="notes">Say these before someone else does. Each one is on the roadmap slide that follows.</aside>
+  </section>
+
+  <!-- 11 roadmap -->
+  <section class="slide" data-title="Next">
+    <h2>What we would build next</h2>
+    <table class="road" id="road">
+      <tbody>
+        <tr><td>Rules fast path in front of the veto</td><td>Clear-cut refunds decided in milliseconds; the model only sees the borderline ones</td></tr>
+        <tr><td>Harness version history</td><td>Every adopted change reversible with one call</td></tr>
+        <tr><td>Replay measurement</td><td>Re-run old tickets with and without the date check, so the wrong-policy rate is measured</td></tr>
+        <tr><td>Human approval queue</td><td>Borderline refunds wait for a person, in the same transaction model</td></tr>
+        <tr><td>Finish-the-job guard</td><td>A run cannot end while a ticket it read is still undecided</td></tr>
+      </tbody>
+    </table>
+    <aside class="notes">Each item closes one of the gaps on the previous slide. None of them needs a new system; they are tables and triggers.</aside>
+  </section>
+
+  <!-- 12 try it -->
+  <section class="slide s-close" data-title="Try it">
+    <h2>Go try to break it</h2>
+    <pre class="cmd">make up &amp;&amp; make seed &amp;&amp; make ingest &amp;&amp; make ui
+open http://127.0.0.1:8766/deck</pre>
+    <p class="sub">pg_synapse is on GitHub, branch <code>harness2-borrowings</code>. The Plexus demo app is not published yet.</p>
+    <aside class="notes">Everything in this deck is reproducible from four make targets. The live slide resets itself.</aside>
+  </section>
+
+</div>
+</div>
+
+<footer class="deck-foot" id="foot"><span>Plexus</span><span id="pageno"></span></footer>
+
+<div class="presenter hidden" id="presenter">
+  <div class="p-top"><b id="p-title"></b><span id="p-timer">0:00</span></div>
+  <div class="p-notes" id="p-notes"></div>
+  <div class="p-next">Next: <span id="p-next"></span></div>
+  <div class="p-keys">Arrows or space to move. F for fullscreen.</div>
+</div>
+
+<div class="spot hidden" id="spot"></div>
+<div class="spot-cap hidden" id="spot-cap"></div>
+<script src="/static/deck.js"></script>
+</body>
+</html>

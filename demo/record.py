@@ -7,9 +7,11 @@ The agent run is live, so a run can fail. A failed run is retried inside
 the same take (steps 11 to 13 again, the failed attempt marked as a cut for
 mux.py) up to --run-retries times before the "fail" narration is used.
 The executive cut's veto works the same way: a wrong outcome is cut and
-tried again.
+tried again. Generic markers: "@await:<js>" awaits a promise and speeds the
+wait up; a step's "check" (JS returning a boolean) picks its ok / off
+variant.
 
-    api/.venv/bin/python demo/record.py [--script walkthrough|exec] [--url http://127.0.0.1:8766/] [--headed]
+    api/.venv/bin/python demo/record.py [--script walkthrough|exec|deck] [--url http://127.0.0.1:8766/] [--headed]
 """
 
 from __future__ import annotations
@@ -74,6 +76,15 @@ async def act(page: Page, action: str, rec: dict) -> None:
         span = t_b - t_a
         if span > WAIT_TARGET_S + 2:
             rec["speed"].append({"start": round(t_a + 0.8, 3), "end": round(t_b - 1.2, 3), "factor": round((span - 2.0) / (WAIT_TARGET_S - 2.0), 3)})
+    elif action.startswith("@await:"):
+        t_a = time.monotonic() - rec["t0"]
+        await page.evaluate(action.split(":", 1)[1])
+        await asyncio.sleep(1.2)  # let the page re-render
+        t_b = time.monotonic() - rec["t0"]
+        span = t_b - t_a
+        if span > WAIT_TARGET_S + 2:
+            rec["speed"].append({"start": round(t_a + 0.8, 3), "end": round(t_b - 1.2, 3), "factor": round((span - 2.0) / (WAIT_TARGET_S - 2.0), 3)})
+        print(f"  {action[:60]} done after {span:.0f}s", flush=True)
     elif action == "@spot_hint":
         rec["hint"] = await page.evaluate(HINT_JS)
         await asyncio.sleep(0.6)
@@ -84,6 +95,8 @@ async def act(page: Page, action: str, rec: dict) -> None:
 def pick_clip(step: dict, rec: dict) -> str:
     if "say" in step:
         return step["id"]
+    if "check" in step:
+        return f"{step['id']}.{'ok' if rec['checks'][step['id']] else 'off'}"
     if step["id"].startswith("14-"):
         return f"{step['id']}.{'pass' if rec.get('passed') else 'fail'}"
     if step["id"].startswith("16-"):
@@ -134,6 +147,8 @@ async def record_once(mod, out: pathlib.Path, url: str, headed: bool, run_retrie
                         await page.evaluate("plexusDemo.clearSpot()")
                         i = run_block
                         continue
+                if "check" in step:
+                    rec.setdefault("checks", {})[step["id"]] = bool(await page.evaluate(step["check"]))
                 cid = pick_clip(step, rec)
                 dur = durations[cid]
                 t = time.monotonic() - rec["t0"]
