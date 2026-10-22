@@ -13,7 +13,8 @@ projects wired through a single database:
 | [stele](../stele) | memory with evidence: every decision cites a `stele://` artifact, corrections supersede, `as_of` shows what was believed |
 | [chunkshop](../chunkshop) | ingest: the corpus and the agent's past runs as vector tables in the same database |
 
-Design and build log: [`docs/DESIGN.md`](docs/DESIGN.md). Captured output
+Design and build log: [`docs/DESIGN.md`](docs/DESIGN.md). Presenting the deck:
+[`docs/deck.md`](docs/deck.md). Videos and .pptx: [`demo/README.md`](demo/README.md). Captured output
 from a real run: [`RUN.md`](RUN.md). Handoff: [`docs/TURNOVER.md`](docs/TURNOVER.md).
 
 ## What it does that nothing else does
@@ -82,7 +83,9 @@ value calculator whose assumptions are on screen.
 centrepiece is a live policy change: a refund passes under v2, refund
 policy v3 (`scenario/policy-next/`) is published as one document, the same
 refund is vetoed under v3, and a July ticket is still judged by v2. "Reset
-to v2" puts everything back. Design and notes: `docs/deck-design.md`.
+to v2" puts everything back. Presenter guide: [`docs/deck.md`](docs/deck.md);
+design and notes: `docs/deck-design.md`. How the videos and the .pptx are
+made, and how to write a new cut: [`demo/README.md`](demo/README.md).
 Every UI route answers loopback clients only; the shell also needs
 `PLEXUS_SHELL=1` (set by `make ui`) and a per-process token. `demo-video`
 needs `ELEVENLABS_API_KEY`; the narration lives in `demo/script.py`. Design
@@ -117,6 +120,9 @@ api/           FastAPI: /policy/search (pg-raggraph, as_of), /policy/ingest, /me
 api/cells/     chunkshop cells: policy corpus; past runs via a pg_table source over synapse.executions
 scenario/      policy/*.md with effective dates, seed.sql, agents.sql, task.txt, assert.sql
 scripts/       run_triage.sh
+web/           the UI (/), the executive page (/exec) and the deck (/deck)
+demo/          narration, Playwright recording, mux, .pptx export (see demo/README.md)
+docs/          design docs, the deck guide, turnover
 Makefile       the demo driver
 ```
 

@@ -47,7 +47,7 @@ ui:
 venv:
 	cd $(HERE)/api && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python \
 	  -e "$(HERE)/../stele[postgres,chunkshop,postgres-graph]" -e "$(HERE)/../pg-raggraph" \
-	  -e "$(HERE)/../chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]" python-pptx
+	  -e "$(HERE)/../chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]" python-pptx playwright imageio-ffmpeg
 
 api:
 	@pkill -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)" 2>/dev/null || true
