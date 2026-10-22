@@ -313,10 +313,11 @@ async def trajectories_search(req: TrajSearch):
 
 
 def run_cell(name: str) -> dict[str, Any]:
-    """Run one chunkshop cell with the CLI from this venv."""
+    """Run one chunkshop cell with the CLI from this venv, from the repo root
+    (cell globs are relative to it: chunkshop expands ${VAR} only in dsn)."""
     exe = pathlib.Path(os.environ.get("VIRTUAL_ENV", HERE / ".venv")) / "bin" / "chunkshop"
     if not exe.exists():
         exe = HERE / ".venv" / "bin" / "chunkshop"
     env = {**os.environ, "PG_DSN": DSN, "PLEXUS_POLICY_DIR": str(POLICY_DIR)}
-    proc = subprocess.run([str(exe), "ingest", "--config", str(CELLS_DIR / name)], capture_output=True, text=True, env=env, timeout=900)
+    proc = subprocess.run([str(exe), "ingest", "--config", str(CELLS_DIR / name)], capture_output=True, text=True, env=env, cwd=HERE.parent, timeout=900)
     return {"cell": name, "exit": proc.returncode, "stdout": proc.stdout[-1500:], "stderr": proc.stderr[-1500:]}

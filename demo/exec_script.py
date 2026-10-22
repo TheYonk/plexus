@@ -7,7 +7,7 @@ Same step format as script.py. Extra markers handled by record.py:
             --run-retries times, the wait itself is sped up
 """
 
-VOICE_ID = "0L2sOpIAWLpsxLGbOsnX"  # ElevenLabs professional voice "The Yonk"
+VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # ElevenLabs premade voice "George"; PLEXUS_VOICE_ID overrides
 MODEL_ID = "eleven_v4"
 PAGE = "exec?demo=1#1"
 READY_JS = "() => window.execDemo && document.querySelector('#n-base').textContent !== '…'"

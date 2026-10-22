@@ -11,7 +11,7 @@ pg-raggraph "P G Rag Graph", stele "Steely", Qwen "Kwen", SQL "sequel".
 "in effect", never "in force" (heard as "enforced").
 """
 
-VOICE_ID = "0L2sOpIAWLpsxLGbOsnX"  # ElevenLabs professional voice "The Yonk"
+VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # ElevenLabs premade voice "George"; PLEXUS_VOICE_ID overrides
 MODEL_ID = "eleven_v4"
 PAGE = "deck?demo=1#1"
 READY_JS = "() => window.deckDemo && deckDemo.ready"

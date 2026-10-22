@@ -3,9 +3,9 @@
 # retrieval layer (pg-raggraph: pgvector + pg_trgm), the memory layer (stele
 # artifacts + memories), and the ingest sink (chunkshop).
 #
-# Build from the pg-synapse REPO ROOT (the Dockerfile lives outside the
-# context on purpose so the demo can live in its own directory):
-#   docker build -f ../plexus/db/Dockerfile -t plexus-db .
+# The pg-synapse checkout comes in as the named build context "synapse"
+# (docker-compose.yml). By hand, from this repo:
+#   docker build --build-context synapse=../pg-synapse -t plexus-db db
 #
 # Stage 1 mirrors pg-synapse/demo/db/Dockerfile: build the pgrx extension
 # against PGDG postgresql-server-dev-17 so install paths line up with the
@@ -25,7 +25,7 @@ RUN cargo install --locked cargo-pgrx --version 0.18.0
 RUN cargo pgrx init --pg17 /usr/lib/postgresql/17/bin/pg_config
 
 WORKDIR /src
-COPY . .
+COPY --from=synapse . .
 
 RUN cd crates/pg-synapse-pgrx \
  && cargo pgrx package --no-default-features \

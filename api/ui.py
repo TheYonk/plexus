@@ -56,6 +56,9 @@ ROOT = HERE.parent
 WEB = ROOT / "web"
 SCENARIO = ROOT / "scenario"
 TUNED = ROOT / "tuned"
+# The run the deck and /exec quote, committed so a fresh clone shows it; any
+# run in tuned/ (written by `make tune`) is listed too and the newest wins.
+REFERENCE = ROOT / "results" / "tune-reference"
 DSN = os.environ.get("PLEXUS_DSN", "postgresql://postgres:postgres@127.0.0.1:55441/plexus")
 AGENT = "triage_agent"
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}
@@ -271,11 +274,12 @@ def trajectory(execution_id: str, width: int = 400):
 
 @router.get("/ui/tune")
 def tune(run: str | None = None):
-    runs = sorted(p.name for p in TUNED.glob("*/summary.json") for p in [p.parent])
+    dirs = {p.parent.name: p.parent for base in (REFERENCE, TUNED) for p in base.glob("*/summary.json")}
+    runs = sorted(dirs)
     if not runs:
-        raise HTTPException(404, "no tuned/* run with a summary.json")
+        raise HTTPException(404, "no run with a summary.json in tuned/ or results/tune-reference/")
     name = run if run in runs else runs[-1]
-    d = TUNED / name
+    d = dirs[name]
     s = json.loads((d / "summary.json").read_text())
     keep = ("label", "passed", "score", "tokens_in", "tokens_out", "iterations", "wall_s", "conditions")
     rollouts = [{k: r.get(k) for k in keep} | {"stage": "base"} for r in s["base"]]

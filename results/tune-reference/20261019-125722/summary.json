@@ -1,0 +1,203 @@
+{
+  "scenario": "plexus",
+  "k": 2,
+  "llm_model": "qwen36-nvfp4",
+  "adopted": "agg1",
+  "why": "2/2 finals passed the task's end-state check; `agg1` passed with the fewest tokens (133163+7418). Base passed 2/2.",
+  "base": [
+    {
+      "label": "base1",
+      "db": "tune_plexus_base1_334617",
+      "passed": true,
+      "error": "",
+      "harness_sha": "9af57229269f",
+      "execution_id": "de2a200e-e564-4595-aec0-44329fefee4a",
+      "status": "completed",
+      "output": "\n\nAll 8 tickets have been triaged. Here is the final report:\n\n| Category | Count |\n|----------|-------|\n| billing  | 4     |\n| api      | 2     |\n| other    | 1     |\n| howto    | 1     |\n| **Total**| **8** |\n\nSummary of decisions:\n- **Ticket 101**: billing, normal, not escalated \u2014 refund approved (10 days, within 14-day window under refund-v1).\n- **Ticket 102**: billing, normal, not escalated \u2014 refund denied (26 days, 15\u201330 day band, no outage cited under refund-v1).\n- **Ticket 103**: billing, normal, not escalated \u2014 refund approved (22 days, within 30-day window under refund-v2).\n- **Ticket 104**: billing, normal, not escalated \u2014 credit offered (61 days, beyond 60-day limit under refund-v2).\n- **Ticket 105**: api, urgent, **escalated=true** (enterprise + urgent) \u2014 production API down, 502 errors.\n- **Ticket 106**: other, normal, not escalated \u2014 dashboard slow with CSV workaround.\n- **Ticket 107**: api, high, not escalated \u2014 login failure (core feature unusable, no workaround); free tier, despite \"URGENT\" in subject.\n- **Ticket 108**: howto, low, not escalated \u2014 question about rotating an API key.",
+      "tokens_in": 195553,
+      "tokens_out": 19176,
+      "iterations": 31,
+      "duration_ms": 179547,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 180.4
+    },
+    {
+      "label": "base2",
+      "db": "tune_plexus_base2_c77a7f",
+      "passed": true,
+      "error": "",
+      "harness_sha": "9af57229269f",
+      "execution_id": "24bd06e4-19c9-46b0-ad39-f8f38f675bd7",
+      "status": "completed",
+      "output": "\n\n**Triage Report \u2014 8 tickets processed**\n\n| Category | Count |\n|----------|-------|\n| billing  | 4     |\n| api      | 2     |\n| other    | 1     |\n| howto    | 1     |\n| **Total**| **8** |\n\n**Summary of decisions:**\n\n| Ticket | Category | Priority | Escalated | Refund Decision | Policy Version |\n|--------|----------|----------|-----------|-----------------|----------------|\n| 101 | billing | normal | false | approve | refund-v1 (10 days, within 14-day window) |\n| 102 | billing | normal | false | deny | refund-v1 (26 days, past 14-day, no outage cited) |\n| 103 | billing | normal | false | approve | refund-v2 (22 days, within 30-day window) |\n| 104 | billing | normal | false | credit | refund-v2 (61 days, past 60-day limit) |\n| 105 | api | urgent | true | n/a | \u2014 |\n| 106 | other | normal | false | n/a | \u2014 |\n| 107 | api | high | false | n/a | \u2014 |\n| 108 | howto | low | false | n/a | \u2014 |\n\nAll tickets updated and audit entries inserted.",
+      "tokens_in": 227346,
+      "tokens_out": 31246,
+      "iterations": 34,
+      "duration_ms": 286730,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 287.6
+    }
+  ],
+  "probes": {
+    "inv1": {
+      "label": "inv1",
+      "db": "tune_plexus_inv1_f94c06",
+      "passed": true,
+      "error": "",
+      "harness_sha": "4972790297a6",
+      "execution_id": "fb2dbb0c-34ba-45e3-b6b1-f002addfcf5e",
+      "status": "completed",
+      "output": "\n\n**Triage complete. 8 tickets processed:**\n\n| Category | Count | Tickets |\n|----------|-------|---------|\n| billing  | 4     | 101, 102, 103, 104 |\n| api      | 2     | 105, 107 |\n| other    | 1     | 106 |\n| howto    | 1     | 108 |\n\n**Refund decisions:**\n- Ticket 101: approve (10 days, refund-v1)\n- Ticket 102: deny (26 days, no outage, refund-v1)\n- Ticket 103: approve (22 days, refund-v2)\n- Ticket 104: credit (61 days, past 60-day limit, refund-v2)\n\n**Escalation:**\n- Ticket 105: escalated=true (enterprise + urgent \u2014 production API down)\n\nAll 8 tickets updated with category, priority, escalated, refund_decision, policy_version, and handled_at. Audit entries inserted for each.",
+      "tokens_in": 122541,
+      "tokens_out": 13680,
+      "iterations": 24,
+      "duration_ms": 129647,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 130.6
+    },
+    "dom1": {
+      "label": "dom1",
+      "db": "tune_plexus_dom1_5035c4",
+      "passed": true,
+      "error": "",
+      "harness_sha": "4b907c948c8d",
+      "execution_id": "7a0f80be-1b27-4450-bdf7-b4428752cc9b",
+      "status": "completed",
+      "output": "\n\n## Triage Report\n\nAll 8 tickets with `category IS NULL` have been triaged, updated, and audited. Category counts:\n\n| Category | Count |\n|----------|-------|\n| billing  | 4     |\n| api      | 2     |\n| other    | 1     |\n| howto    | 1     |\n| **Total**| **8** |\n\n**Summary of decisions:**\n\n| Ticket | Category | Priority | Escalated | Refund Decision | Policy Version |\n|--------|----------|----------|-----------|-----------------|----------------|\n| 101    | billing  | normal   | false     | approve         | refund-v1      |\n| 102    | billing  | normal   | false     | deny            | refund-v1      |\n| 103    | billing  | normal   | false     | approve         | refund-v2      |\n| 104    | billing  | normal   | false     | credit          | refund-v2      |\n| 105    | api      | urgent   | true      | n/a             | (null)         |\n| 106    | other    | normal   | false     | n/a             | (null)         |\n| 107    | api      | high     | false     | n/a             | (null)         |\n| 108    | howto    | low      | false     | n/a             | (null)         |",
+      "tokens_in": 182660,
+      "tokens_out": 14034,
+      "iterations": 30,
+      "duration_ms": 132436,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 133.3
+    },
+    "inv2": {
+      "label": "inv2",
+      "db": "tune_plexus_inv2_142e34",
+      "passed": true,
+      "error": "",
+      "harness_sha": "6c562f7489d7",
+      "execution_id": "7567601e-786c-4e2f-974b-91fe07bb93d8",
+      "status": "completed",
+      "output": "\n\nAll 8 tickets have been triaged. Here is the summary:\n\n**Tickets handled by category:**\n- **billing**: 4 tickets (101\u2013104, all refund requests)\n- **api**: 2 tickets (105 production API down, 107 login failure)\n- **other**: 1 ticket (106 dashboard slow)\n- **howto**: 1 ticket (108 API key rotation question)\n\n**Total: 8 tickets** (2+4+1+1 = 8)",
+      "tokens_in": 155044,
+      "tokens_out": 12606,
+      "iterations": 28,
+      "duration_ms": 120298,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 121.2
+    },
+    "dom2": {
+      "label": "dom2",
+      "db": "tune_plexus_dom2_f8dfb1",
+      "passed": true,
+      "error": "",
+      "harness_sha": "80af06125daf",
+      "execution_id": "949168f2-18cb-4672-b67e-ace9deb44774",
+      "status": "completed",
+      "output": "\n\n**Report \u2014 Tickets Triaged: 8**\n\n| Category | Count |\n|----------|-------|\n| api | 2 |\n| billing | 4 |\n| howto | 1 |\n| other | 1 |\n| **Total** | **8** |\n\nSummary of decisions:\n\n| ID | Category | Priority | Escalated | Refund Decision | Policy Version |\n|----|----------|----------|-----------|-----------------|----------------|\n| 101 | billing | normal | false | approve | refund-v1 |\n| 102 | billing | normal | false | deny | refund-v1 |\n| 103 | billing | normal | false | approve | refund-v2 |\n| 104 | billing | normal | false | credit | refund-v2 |\n| 105 | api | urgent | true | n/a | NULL |\n| 106 | other | normal | false | n/a | NULL |\n| 107 | api | high | false | n/a | NULL |\n| 108 | howto | low | false | n/a | NULL |\n\nAll 8 tickets have been updated and audited. Refund tickets (101\u2013104) were processed under the policy version in force on their `created_at` date. Only ticket 105 (enterprise + urgent) is escalated.",
+      "tokens_in": 180661,
+      "tokens_out": 11993,
+      "iterations": 31,
+      "duration_ms": 114031,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 114.8
+    },
+    "agg1": {
+      "label": "agg1",
+      "db": "tune_plexus_agg1_fa1f74",
+      "passed": true,
+      "error": "",
+      "harness_sha": "11304c8e33bd",
+      "execution_id": "dc11a479-01ec-4fc4-bb76-0f27d60c0675",
+      "status": "completed",
+      "output": "\n\n**Triage Report**\n\nAll 8 tickets processed:\n\n| Category  | Count |\n|-----------|-------|\n| billing   | 4     |\n| api       | 2     |\n| other     | 1     |\n| howto     | 1     |\n| **Total** | **8** |\n\nSummary of decisions:\n- **Tickets 101-104** (billing/refund): 101 approved (10 days, refund-v1), 102 denied (26 days, no outage, refund-v1), 103 approved (22 days, within 30-day window, refund-v2), 104 credit (61 days, past 60-day limit, refund-v2).\n- **Ticket 105** (api/urgent): Production API down \u2014 escalated to on-call (enterprise + urgent).\n- **Ticket 106** (other/normal): Dashboard slow with workaround.\n- **Ticket 107** (api/high): Cannot log in, core feature unusable, free tier so not escalated.\n- **Ticket 108** (howto/low): How to rotate API keys.",
+      "tokens_in": 133163,
+      "tokens_out": 7418,
+      "iterations": 25,
+      "duration_ms": 71634,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 72.5
+    },
+    "agg2": {
+      "label": "agg2",
+      "db": "tune_plexus_agg2_d8b12e",
+      "passed": true,
+      "error": "",
+      "harness_sha": "e09302f9fd1f",
+      "execution_id": "cba71aaf-e01a-4d92-8c6e-85f6bf46caa6",
+      "status": "completed",
+      "output": "\n\nTriage complete for 8 tickets (ids 101-108). Category breakdown:\n\n| Category | Count |\n|----------|-------|\n| api | 2 |\n| billing | 4 |\n| howto | 1 |\n| other | 1 |\n| **Total** | **8** |\n\nSummary of decisions:\n- **101** (pro, refund): billing, normal, escalated=false, approve under refund-v1 (10 days, within 14-day window)\n- **102** (pro, refund): billing, normal, escalated=false, deny under refund-v1 (26 days, between 15-30 days, no outage cited)\n- **103** (pro, refund): billing, normal, escalated=false, approve under refund-v2 (22 days, within 30-day window)\n- **104** (pro, refund): billing, normal, escalated=false, credit under refund-v2 (61 days, past 60-day limit)\n- **105** (enterprise): api, urgent, escalated=true (production API down)\n- **106** (enterprise): other, normal, escalated=false (dashboard slow, workaround exists)\n- **107** (free): api, high, escalated=false (cannot log in, free tier)\n- **108** (pro): howto, low, escalated=false (API key rotation question)",
+      "tokens_in": 160162,
+      "tokens_out": 14737,
+      "iterations": 28,
+      "duration_ms": 136085,
+      "score": 1.0,
+      "conditions": {
+        "classification": true,
+        "escalation": true,
+        "refund decisions": true,
+        "policy_version": true,
+        "audit (one row per ticket)": true
+      },
+      "wall_s": 136.9
+    }
+  },
+  "experience": {
+    "edits": "| Component | What changed (candidates) | Observed difference in execution | Verdict |\n|---|---|---|---|\n| system_prompt.md: a literal UPDATE/INSERT template with `$3::boolean`, `$6::int`, `handled_at = now()` and an example params array (inv1, agg1, agg2) | Before, the prompt only described the rule in prose (\"use placeholders, never inline\"). The candidates added a copyable statement. | The first UPDATE succeeded with no error in all three template runs (inv1 L153, agg1 L152, agg2 L159). Every run without the template failed its first UPDATE several times: base1 L145\u2013163 (3 errors: text bool, params sent as a string, handled_at type), base2 L150\u2013164 (3), dom1 L156\u2013176 (4), dom2 L156\u2013182 (5), inv2 L145\u2013153 (2). In the template runs every later UPDATE had the same shape. | helped. The split is 3 runs vs 5, one rollout per candidate, but the moment is the same in each. |\n| handled_at = now() written into the SQL text: placed in memory (dom1, dom2), guardrails (inv2, agg1, agg2) or the template (inv1) | Before, \"never inline literal values\" was the only guidance. | Both base runs bound handled_at to the ticket's created_at and then cast it to make it fit (base1 L163, base2 L162). All six candidates wrote `handled_at = now()` from their first UPDATE, wherever the line was placed. | helped. Six runs, three placements, same result. |\n| system_prompt.md: per-ticket a/b/c procedure, \"never UPDATE or audit twice\", definition of done (inv1, inv2, agg1, agg2) | Replaced the one-line \"one ticket at a time\" instruction. | agg1 still ran all 4 policy lookups first (L132\u2013138), so per-ticket ordering of lookups did not happen. Each UPDATE was followed by its own audit, there were 8 UPDATEs and 8 audits, nothing was re-updated, no check queries ran, and the run took 25 iterations. Base: 104 updated 3\u00d7 and 107 2\u00d7, base2's 104 audit says \"Denied\" while the row says credit, 34 iterations. | confounded (bundled with the template) |\n| skills/refund_policy: number of lookups = number of charge_date rows, never reuse another ticket's response (dom1, dom2, agg1, agg2) | Added. | Every candidate made 4 lookups, including as_of 2026-08-01 for 104. Both base runs made 3. inv1 and inv2 got 4 lookups without this line, from the procedure change alone. | confounded (two independent edits gave the same result) |\n| skills/refund_policy: past the last limit = credit, never deny, with a 61-day example (dom1, agg1, agg2) | Added. | agg1 wrote 104 as credit once (L182) and its audit says \"61 days \u2026 credit\" (L187). Base runs first wrote credit, then flipped to deny and back. inv1 and inv2 had no such line and also didn't flip, because they had the one-UPDATE rule. | confounded |\n| skills/refund_policy step 6: audit day count = step-2 number (dom2 only) | Added. | dom2's 104 audit still said \"31 days\". | no observed effect (not adopted) |\n| tool_hints.json \"there is no parameter $\": params must be a JSON array, not a quoted string (inv2, agg1, agg2) | Revised hint text. | agg1 L227: params sent as a string \u2192 L231 new hint \u2192 L233 correct on the next call. inv2 L151 \u2192 L157 the same. Under the old hint, dom1 and dom2 repeated the string mistake 2\u20133 times. | helped (few instances) |\n| tool_hints.json: new `column \"handled_at\"` hint and a handled_at exception in the cast hint (inv1, inv2, agg1, agg2) | Added. | The hint never fired in any candidate, because now() was used from the start. | no observed effect |\n| tool_hints.json \"invalid input syntax\": applies to any tool, casts never in params (inv2, agg1, agg2) | Revised. | The hint never fired. | no observed effect |\n| memory.md: dropped the \"Lessons from earlier runs\" block (all six) | Removed. | No base run had used it. No behavioural difference can be attributed to removing it. | no observed effect |\n| memory.md priority line: how/where question = low, one user unable to log in = high (dom2, agg1, agg2) | Added. | agg1 wrote 107 high and 108 low on the first attempt (L212, L222). inv1, which lacked the line, left 107 at normal. dom1 and inv2 also lacked it and still wrote 107 high, and base1 wrote 108 low without it. | confounded |\n| system_prompt.md: report from a final GROUP BY over the triaged ids (agg2 only) | Added. | agg2 ran 28 iterations with 1 http_post error and 1 sql error. It used more tokens than agg1 and the report showed no difference. | no observed effect (not adopted) |",
+    "cue": "The agent writes rows through a parameterized SQL tool, and the harness gives the binding rules only in prose (\"use $n placeholders, never inline literals\", \"set the timestamp to now()\"). Early tool calls fail on type mismatches, params sent as a string, or a server-side timestamp bound as a parameter.",
+    "lesson": "In system_prompt, give one literal, copyable write statement per table. Put the casts on non-text placeholders in the SQL (`$3::boolean`, `$6::int`), write server-computed columns as functions in the SQL text (`handled_at = now()`, never a param), and add one example params JSON array in placeholder order. Separately, change the tool_hints entry for \"no parameter $n\" so it says params must be a JSON array, not a quoted string.",
+    "evidence": "Template row. inv1, agg1 and agg2 had the template, and each first UPDATE succeeded with zero errors. base1, base2, dom1, dom2 and inv2 had prose only, and each lost 2\u20135 retries on the first UPDATE. handled_at row: all six candidates used now() from the first write, while both base runs bound created_at. tool_hints row: under the revised hint, agg1 L227\u2192L233 and inv2 L151\u2192L157 fixed a string-params call in one retry; dom1 and dom2 repeated the mistake 2\u20133 times under the old hint.",
+    "confidence": "medium"
+  },
+  "lesson_id": "2"
+}

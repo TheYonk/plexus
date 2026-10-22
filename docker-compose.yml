@@ -8,13 +8,16 @@
 # containers: the database reaches both through host.docker.internal, which
 # the SSRF allowlist below permits for pg_synapse's http_post tool.
 #
-# Build context is the sibling pg-synapse checkout (branch harness2-borrowings).
+# The image builds pg_synapse from the checkout in PLEXUS_SYNAPSE_DIR (the
+# Makefile sets it to $(DEPS)/pg-synapse; make deps clones it at the pinned
+# commit), passed to the Dockerfile as the named build context "synapse".
 
 services:
   db:
     build:
-      context: ../pg-synapse
-      dockerfile: ../plexus/db/Dockerfile
+      context: ./db
+      additional_contexts:
+        synapse: ${PLEXUS_SYNAPSE_DIR:-../pg-synapse}
     image: plexus-db:dev
     environment:
       POSTGRES_PASSWORD: postgres

@@ -4,7 +4,7 @@
 cell_name: plexus_policy
 source:
   type: files
-  glob: "/home/yonk/yonk-tools/plexus/scenario/policy/*.md"
+  glob: "scenario/policy/*.md"  # relative to the repo root (app.run_cell runs from there)
   id_from: stem
 chunker:
   type: sentence_aware

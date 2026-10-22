@@ -184,10 +184,11 @@
   <!-- 12 try it -->
   <section class="slide s-close" data-title="Try it">
     <h2>Go try to break it</h2>
-    <pre class="cmd">make up &amp;&amp; make seed &amp;&amp; make ingest &amp;&amp; make ui
+    <pre class="cmd">git clone https://github.com/TheYonk/plexus &amp;&amp; cd plexus
+make deps venv up ingest seed ui
 open http://127.0.0.1:8766/deck</pre>
-    <p class="sub">pg_synapse is on GitHub, branch <code>harness2-borrowings</code>. The Plexus demo app is not published yet.</p>
-    <aside class="notes">Everything in this deck is reproducible from four make targets. The live slide resets itself.</aside>
+    <p class="sub">github.com/TheYonk/plexus, Apache-2.0. Built on pg_synapse, pg-raggraph, stele and chunkshop.</p>
+    <aside class="notes">Everything in this deck is reproducible from a fresh clone: make deps pulls the four projects at the commits it was tested with. The live slide resets itself.</aside>
   </section>
 
 </div>

@@ -14,7 +14,7 @@ Steps with `variants` pick their text at record time (record.py decides
 from what is on screen); voice.py renders every variant.
 """
 
-VOICE_ID = "0L2sOpIAWLpsxLGbOsnX"  # ElevenLabs professional voice "The Yonk"
+VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # ElevenLabs premade voice "George"; PLEXUS_VOICE_ID overrides
 MODEL_ID = "eleven_v4"  # audio tags ([excited], [laughs]) shape delivery; they are not spoken
 PAGE = "?demo=1#stack"
 READY_JS = "() => document.querySelector('#shell-state').textContent === 'connected'"

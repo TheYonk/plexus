@@ -1,5 +1,7 @@
 # Plexus demo driver. Every target prints what it proves.
 #
+#   make deps      clone pg-synapse, stele, pg-raggraph, chunkshop at the commits in deps.lock
+#   make venv      the API's Python env (the sibling projects, editable)
 #   make up        start Postgres (pg_synapse + pgvector + pg_trgm) and the API
 #   make ui        restart the API with the web UI's shell dock on (loopback only)
 #   make demo-video  narrate (ElevenLabs), record (Playwright), mux -> demo/out/plexus-demo.mp4
@@ -14,12 +16,15 @@
 #   make tune      bench/tune.py improves triage_agent from its own trajectories
 #   make down      stop everything
 #
-# Host requirements: docker, psql, curl, python3, Ollama serving the model
-# below on all interfaces (OLLAMA_HOST=0.0.0.0 OLLAMA_CONTEXT_LENGTH=32768
-# ollama serve), and the api/.venv created by `make venv`.
+# Host requirements: docker, psql, curl, git, python3, uv, Ollama serving the
+# model below on all interfaces (OLLAMA_HOST=0.0.0.0 OLLAMA_CONTEXT_LENGTH=32768
+# ollama serve), and the api/.venv created by `make venv`. `make tune` also
+# needs the Claude CLI; the videos need ELEVENLABS_API_KEY.
 
 SHELL := /bin/bash
 HERE  := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+# Where the sibling projects live (make deps clones them there).
+DEPS  ?= $(abspath $(HERE)/..)
 PG_PORT ?= 55441
 DSN     ?= postgresql://postgres:postgres@127.0.0.1:$(PG_PORT)/plexus
 ADMIN_DSN ?= postgresql://postgres:postgres@127.0.0.1:$(PG_PORT)/postgres
@@ -31,10 +36,16 @@ PSQL = psql "$(DSN)" -X -v ON_ERROR_STOP=1
 PLEXUS_SHELL ?= 0
 VENV = $(HERE)/api/.venv
 
-.PHONY: up down venv api ui demo-video exec-video deck-video deck-pptx ingest seed run veto memory tune status trajectories
+.PHONY: deps site up down venv api ui demo-video exec-video deck-video deck-pptx ingest seed run veto memory tune status trajectories
+
+COMPOSE = PLEXUS_PG_PORT=$(PG_PORT) PLEXUS_SYNAPSE_DIR=$(DEPS)/pg-synapse docker compose -f $(HERE)/docker-compose.yml
+
+deps:
+	@$(HERE)/scripts/deps.sh "$(DEPS)"
 
 up:
-	docker compose -f $(HERE)/docker-compose.yml up -d --build
+	@test -d "$(DEPS)/pg-synapse" || { echo "no $(DEPS)/pg-synapse: run make deps first"; exit 1; }
+	$(COMPOSE) up -d --build
 	@until $(PSQL) -Atc "select 1" >/dev/null 2>&1; do sleep 1; done
 	@$(PSQL) -Atc "select 'postgres ready: pg_synapse ' || synapse.version() || ', ' || string_agg(extname||' '||extversion, ', ') from pg_extension where extname in ('vector','pg_trgm')"
 	$(MAKE) api
@@ -46,8 +57,8 @@ ui:
 
 venv:
 	cd $(HERE)/api && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python \
-	  -e "$(HERE)/../stele[postgres,chunkshop,postgres-graph]" -e "$(HERE)/../pg-raggraph" \
-	  -e "$(HERE)/../chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]" python-pptx playwright imageio-ffmpeg
+	  -e "$(DEPS)/stele[postgres,chunkshop,postgres-graph]" -e "$(DEPS)/pg-raggraph" \
+	  -e "$(DEPS)/chunkshop/python" fastapi "uvicorn[standard]" "psycopg[binary]" python-pptx playwright imageio-ffmpeg
 
 api:
 	@pkill -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)" 2>/dev/null || true
@@ -67,7 +78,8 @@ ingest:
 seed:
 	$(PSQL) -f $(HERE)/scenario/seed.sql
 	$(PSQL) -Atc "select synapse.llm_profile_set('llm','openai','$(LLM_MODEL)','$(LLM_BASE_URL)',NULL,'{}'::jsonb)" >/dev/null
-	$(PSQL) -f $(HERE)/scenario/agents.sql >/dev/null
+	@# agents.sql names the API as host.docker.internal:8766; follow API_PORT
+	sed 's|host.docker.internal:8766|host.docker.internal:$(API_PORT)|g' $(HERE)/scenario/agents.sql | $(PSQL) -f - >/dev/null
 	@$(PSQL) -Atc "select 'triage_agent always-on chars: ' || (synapse.agent_harness('triage_agent')->>'always_on_chars') || ' / ' || (synapse.agent_harness('triage_agent')->>'always_on_cap')"
 	@$(PSQL) -Atc "select 'skills: ' || string_agg(name, ', ') from synapse.skills where agent='triage_agent'"
 	@$(PSQL) -Atc "select 'inline veto trigger attached to support.refunds: ' || (select count(*) from pg_trigger where tgrelid = 'support.refunds'::regclass and not tgisinternal)"
@@ -106,7 +118,7 @@ trajectories:
 K ?= 1
 tune:
 	@echo "== Propose-Probe-Compose on the Plexus scenario: improver = Claude CLI, judge = assert.sql, lessons -> synapse.lessons =="
-	python3 $(HERE)/../pg-synapse/bench/tune.py --scenario $(HERE)/scenario --from-agent triage_agent \
+	python3 $(DEPS)/pg-synapse/bench/tune.py --scenario $(HERE)/scenario --from-agent triage_agent \
 	  --dsn "$(ADMIN_DSN)" --llm-base-url "$(LLM_BASE_URL)" --llm-model "$(LLM_MODEL)" \
 	  --k $(K) --agent-timeout 900 --improver claude \
 	  --library-dsn "$(DSN)" --library-agent triage_agent --apply \
@@ -138,4 +150,4 @@ status:
 
 down:
 	-pkill -f "[u]vicorn app:app --host 0.0.0.0 --port $(API_PORT)"
-	docker compose -f $(HERE)/docker-compose.yml down -v
+	$(COMPOSE) down -v

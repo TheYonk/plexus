@@ -1,0 +1,42 @@
+[
+  {
+    "tool_name": "sql_exec",
+    "error_pattern": "column \"handled_at\"",
+    "hint": "handled_at must be the time you handle the ticket, not created_at: write handled_at = now() directly in the SQL, remove that placeholder and its params entry, renumber the remaining $n, and resend once."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "but expression is of type",
+    "hint": "A bound parameter's type does not match the column. Resend once with a cast on that placeholder matching the column type named in the error (e.g. $3::boolean, $6::int). Exception: for handled_at, use now() in the SQL instead of a parameter."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "invalid input syntax for type",
+    "hint": "One params entry is in the wrong position or has the wrong type: the value quoted in the error landed on the id placeholder. The params array must hold one entry per $n in order, with the ticket id as a plain number (e.g. 101), escalated as true/false, and NULL as JSON null. Casts like ::int go in the SQL text, never inside a params value. Fix that entry and resend once; do not resend the identical call."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "syntax error at or near \";\"",
+    "hint": "The SQL tools reject a trailing semicolon. Resend the same statement without the final \";\"."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "there is no parameter $",
+    "hint": "params must be a JSON array (e.g. [\"billing\", \"normal\", false, 101]), not a quoted string, with exactly one entry per $n placeholder, in order. Casts go in the SQL text, not in params."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "missing field `query`",
+    "hint": "Every SQL tool call needs a top-level \"query\" string and a \"params\" array."
+  },
+  {
+    "tool_name": null,
+    "error_pattern": "operator does not exist",
+    "hint": "A bound parameter has the wrong type. Cast it in the SQL (e.g. $1::int, $3::boolean) or pass a JSON value of the right type."
+  },
+  {
+    "tool_name": "http_post",
+    "error_pattern": "blocked",
+    "hint": "The Plexus API host must be exactly http://host.docker.internal:8766; do not change the host or scheme."
+  }
+]

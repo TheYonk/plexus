@@ -8,7 +8,7 @@ clips sound like one take rather than 23 separate ones. Durations land in
 demo/out/audio/durations.json, integrated loudness (LUFS) in loudness.json;
 mux.py uses the latter to level every clip to the same loudness.
 
-    ELEVENLABS_API_KEY=... api/.venv/bin/python demo/voice.py [--script walkthrough|exec|deck]
+    ELEVENLABS_API_KEY=... [PLEXUS_VOICE_ID=...] api/.venv/bin/python demo/voice.py [--script walkthrough|exec|deck]
 """
 
 from __future__ import annotations
@@ -91,7 +91,8 @@ def main() -> None:
     ap.add_argument("--script", choices=sorted(MODULES), default="walkthrough")
     args = ap.parse_args()
     mod, out_dir = load(args.script)
-    VOICE_ID, MODEL_ID = mod.VOICE_ID, mod.MODEL_ID
+    # Any voice in your ElevenLabs account; the script's VOICE_ID is a premade one.
+    VOICE_ID, MODEL_ID = os.environ.get("PLEXUS_VOICE_ID") or mod.VOICE_ID, mod.MODEL_ID
     OUT = out_dir / "audio"
     OUT.mkdir(parents=True, exist_ok=True)
     durations, lufs = {}, {}

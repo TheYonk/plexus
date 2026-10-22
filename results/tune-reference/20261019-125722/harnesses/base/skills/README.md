@@ -1,0 +1,1 @@
+<!-- on-demand skills: skills/<name>/SKILL.md with frontmatter `name:` (== directory) and `description:` (one line; becomes the always-on trigger). Body loads only when the agent calls load_skill. -->
