@@ -15,6 +15,7 @@
 #   make memory    decisions become stele memories; a correction supersedes one
 #   make tune      bench/tune.py improves triage_agent from its own trajectories
 #   make down      stop everything
+#   make site      the GitHub Pages site (videos, playable deck) -> site/_build; make site-publish pushes it
 #
 # Host requirements: docker, psql, curl, git, python3, uv, Ollama serving the
 # model below on all interfaces (OLLAMA_HOST=0.0.0.0 OLLAMA_CONTEXT_LENGTH=32768
@@ -36,7 +37,7 @@ PSQL = psql "$(DSN)" -X -v ON_ERROR_STOP=1
 PLEXUS_SHELL ?= 0
 VENV = $(HERE)/api/.venv
 
-.PHONY: deps site up down venv api ui demo-video exec-video deck-video deck-pptx ingest seed run veto memory tune status trajectories
+.PHONY: deps site site-publish up down venv api ui demo-video exec-video deck-video deck-pptx ingest seed run veto memory tune status trajectories
 
 COMPOSE = PLEXUS_PG_PORT=$(PG_PORT) PLEXUS_SYNAPSE_DIR=$(DEPS)/pg-synapse docker compose -f $(HERE)/docker-compose.yml
 
@@ -144,6 +145,14 @@ deck-video:
 
 deck-pptx:
 	$(VENV)/bin/python $(HERE)/demo/export_pptx.py --url http://127.0.0.1:$(API_PORT)/
+
+# The project site. Needs the videos and the .pptx in demo/out, and
+# site/deck-snapshot.json (demo/snapshot.py records it from a running API).
+site:
+	$(VENV)/bin/python $(HERE)/site/build.py
+
+site-publish: site
+	$(HERE)/scripts/publish_site.sh
 
 status:
 	@$(PSQL) -c "select agent_name, status, tokens_in, tokens_out, duration_ms, started_at from synapse.executions order by started_at desc limit 10"

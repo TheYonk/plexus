@@ -7,11 +7,13 @@ projects wired through a single database:
 
 | Project | Role here |
 | --- | --- |
-| [pg_synapse](../pg-synapse) (branch `harness2-borrowings`) | the agent runtime: `SELECT synapse.execute(...)`, tools, triggers, harness components, lessons |
-| [harness2](../harness2) (ideas, not code) | the Propose-Probe-Compose tuner and the cost-tiered harness model, reimplemented inside pg_synapse |
-| [pg-raggraph](../pg-raggraph) | retrieval over the policy corpus with effective dates: `as_of` returns the version in force |
-| [stele](../stele) | memory with evidence: every decision cites a `stele://` artifact, corrections supersede, `as_of` shows what was believed |
-| [chunkshop](../chunkshop) | ingest: the corpus and the agent's past runs as vector tables in the same database |
+| [pg_synapse](https://github.com/yonk-labs/pg-synapse/tree/harness2-borrowings) (branch `harness2-borrowings`) | the agent runtime: `SELECT synapse.execute(...)`, tools, triggers, harness components, lessons |
+| [harness2](https://github.com/google-research/harness2) (ideas, not code) | the Propose-Probe-Compose tuner and the cost-tiered harness model, reimplemented inside pg_synapse |
+| [pg-raggraph](https://github.com/yonk-labs/pg-raggraph) | retrieval over the policy corpus with effective dates: `as_of` returns the version in force |
+| [stele](https://github.com/yonk-labs/stele) | memory with evidence: every decision cites a `stele://` artifact, corrections supersede, `as_of` shows what was believed |
+| [chunkshop](https://github.com/yonk-labs/chunkshop) | ingest: the corpus and the agent's past runs as vector tables in the same database |
+
+Watch it and click through the presentation: **https://theyonk.github.io/plexus/**
 
 Design and build log: [`docs/DESIGN.md`](docs/DESIGN.md). Presenting the deck:
 [`docs/deck.md`](docs/deck.md). Videos and .pptx: [`demo/README.md`](demo/README.md). Captured output
@@ -38,19 +40,23 @@ from a real run: [`RUN.md`](RUN.md). Handoff: [`docs/TURNOVER.md`](docs/TURNOVER
 
 ## Run it
 
-Host requirements: Docker, `psql`, `curl`, `python3`, `uv`, Ollama, and the
-Claude CLI (the tuner's improver). The agent model is a 4B local model:
+Host requirements: Docker (with Compose v2), `psql`, `curl`, `git`,
+Python 3.12, `uv`, and Ollama. `make tune` also needs the Claude CLI (the
+tuner's improver); the videos need an ElevenLabs key. The agent model is a
+4B local model by default:
 
 ```bash
 ollama pull qwen3:4b-instruct-2507-q4_K_M
 OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=32768 ollama serve &
 ```
 
-Then, from this directory:
+### Quick start from a fresh clone
 
 ```bash
-make venv      # one venv with stele, pg-raggraph and chunkshop from the sibling checkouts
-make up        # builds pgvector/pgvector:pg17 + pg_synapse (~3 min warm), starts the API
+git clone https://github.com/TheYonk/plexus && cd plexus
+make deps      # clones pg-synapse, stele, pg-raggraph, chunkshop next to this checkout, at the commits in deps.lock
+make venv      # one venv with stele, pg-raggraph and chunkshop (editable, from those checkouts)
+make up        # builds pgvector/pgvector:pg17 + pg_synapse (a few minutes the first time), starts the API
 make ingest    # policy corpus -> pg-raggraph (v2 supersedes v1 on 2026-07-01) + chunkshop sink
 make seed      # scenario tables, agents, skills, hints, the inline veto trigger
 make run       # triage_agent handles 8 tickets; prints decisions and the assertion
@@ -60,6 +66,26 @@ make trajectories   # past runs -> chunkshop -> plexus.trajectory_chunks, then s
 make tune K=2  # Propose-Probe-Compose; lessons land in synapse.lessons
 make down
 ```
+
+`make deps` leaves an existing checkout alone and says so if it is not at
+the pinned commit. Put the siblings elsewhere with `DEPS=/some/dir` on every
+`make` call. Other ports: `PG_PORT=...` and `API_PORT=...` (seeding points
+the agent at the API port you chose).
+
+**About the model.** The default 4B model fits a laptop and gets the
+policy lookups and the veto right, but it fails the full 8-ticket
+assertion more often than not (it tops out at 3 of 5 runs, and runs
+sometimes stop early). The numbers in the deck and the videos come from
+Qwen3.6-35B-A3B on vLLM. Any OpenAI-compatible endpoint works; give it to
+the agent when seeding, as seen from inside the database container:
+
+```bash
+make seed LLM_MODEL=<model name> LLM_BASE_URL=http://<host>:8000/v1
+```
+
+The tuning numbers the UI and the deck show (37% fewer tokens per ticket)
+are from a committed reference run, `results/tune-reference/`, until your
+own `make tune` writes one to `tuned/`.
 
 ### Web UI and recorded walkthrough
 
@@ -88,11 +114,16 @@ design and notes: `docs/deck-design.md`. How the videos and the .pptx are
 made, and how to write a new cut: [`demo/README.md`](demo/README.md).
 Every UI route answers loopback clients only; the shell also needs
 `PLEXUS_SHELL=1` (set by `make ui`) and a per-process token. `demo-video`
-needs `ELEVENLABS_API_KEY`; the narration lives in `demo/script.py`. Design
+needs `ELEVENLABS_API_KEY`, and `PLEXUS_VOICE_ID` for a voice of your own
+(the default is a premade ElevenLabs voice); the narration lives in
+`demo/script.py`. `make site` builds the GitHub Pages site (the videos, the
+deck replaying a recorded run, the .pptx) into `site/_build`, and
+`make site-publish` pushes it to the `gh-pages` branch. Design
 and notes: `docs/webapp-demo-design.md`.
 
-A stronger agent model is one profile row away, e.g. Qwen3.6-35B-A3B on
-vLLM: `select synapse.llm_profile_set('llm','openai','qwen36-nvfp4','http://<host>:8000/v1',NULL,'{}')`.
+A stronger agent model is one profile row away (this is what `make seed
+LLM_MODEL=... LLM_BASE_URL=...` writes), e.g. Qwen3.6-35B-A3B on vLLM:
+`select synapse.llm_profile_set('llm','openai','qwen36-nvfp4','http://<host>:8000/v1',NULL,'{}')`.
 
 Ports: Postgres `55441`, API `8766`. The database reaches Ollama and the
 API through `host.docker.internal`; `PG_SYNAPSE_HTTP_ALLOW` on the
@@ -115,6 +146,9 @@ job is to make it pass.
 ## Where the pieces live
 
 ```
+deps.lock      the sibling projects and the commits Plexus is tested with (make deps)
+results/       the reference tune run the UI and the deck quote
+site/          the GitHub Pages site: landing page, build script, the deck's recorded run
 db/            Dockerfile: pgvector/pgvector:pg17 + pg_synapse; initdb creates the three extensions
 api/           FastAPI: /policy/search (pg-raggraph, as_of), /policy/ingest, /memory/*, /trajectories/*
 api/cells/     chunkshop cells: policy corpus; past runs via a pg_table source over synapse.executions
@@ -140,3 +174,9 @@ Makefile       the demo driver
   `memory.search(as_of=...)`.
 - From chunkshop: a `files` cell for the corpus and a `pg_table` cell
   over a view that renders each execution with `synapse.trajectory()`.
+
+## License
+
+Apache-2.0, see [`LICENSE`](LICENSE). pg_synapse, pg-raggraph, stele and
+chunkshop are separate projects under their own licenses; `make deps`
+fetches them, nothing of theirs is vendored here.

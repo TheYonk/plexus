@@ -83,21 +83,78 @@ site.
 
 ## Todo
 
-- [ ] R1 rebase onto the remote's LICENSE commit; README license line
-- [ ] R2 relative chunkshop glob (`run_cell` cwd = repo root)
-- [ ] R3 `agents.sql` API port substitution in `make seed`; compose port and context from the Makefile
-- [ ] R4 `deps.lock` + `make deps`; `DEPS` in `venv`, `tune`, compose
-- [ ] R5 `PLEXUS_VOICE_ID` with a stock default
-- [ ] R6 reference tune run committed; `tune()` fallback
-- [ ] R7 deck "Try it" slide and README quick start for a fresh clone
-- [ ] R8 fresh-clone test on other ports: deps, venv, up, ingest, seed, run, veto, memory, ui pages
-- [ ] R9 deck snapshot mode, `demo/snapshot.py`, landing page, `make site`; browser check of the built site
+- [x] R1 rebase onto the remote's LICENSE commit; README license line
+- [x] R2 relative chunkshop glob (`run_cell` cwd = repo root)
+- [x] R3 `agents.sql` API port substitution in `make seed`; compose port and context from the Makefile
+- [x] R4 `deps.lock` + `make deps`; `DEPS` in `venv`, `tune`, compose
+- [x] R5 `PLEXUS_VOICE_ID` with a stock default
+- [x] R6 reference tune run committed; `tune()` fallback
+- [x] R7 deck "Try it" slide and README quick start for a fresh clone
+- [x] R8 fresh-clone test on other ports: deps, venv, up, ingest, seed, run, veto, memory, ui pages
+- [x] R9 deck snapshot mode, `demo/snapshot.py`, landing page, `make site`; browser check of the built site
 - [ ] R10 secret scan (tree + history), push `main`, push `gh-pages`, enable Pages, check the live URL
 
 ## Implementation notes
 
-(filled in as items land)
+- R1: the remote's only commit was "Initial commit" adding an Apache-2.0
+  `LICENSE`; local history was rebased onto it. Commit author and committer
+  rewritten to matt@theyonk.com before the first push (the user's choice;
+  the global git config is a work address), and set as this repo's
+  `user.email`.
+- R2: `run_cell` runs chunkshop with `cwd` = repo root; `policy.yaml` uses
+  `scenario/policy/*.md`.
+- R3: `make seed` pipes `agents.sql` through `sed` to swap the API port;
+  `COMPOSE` in the Makefile passes `PLEXUS_PG_PORT` and
+  `PLEXUS_SYNAPSE_DIR`. The Dockerfile now takes pg-synapse as the named
+  build context `synapse` (`additional_contexts`), so the repo directory
+  can have any name; before, the compose file assumed `../plexus/db`.
+- R4: the first fresh-clone run failed in `make venv`: stele `main` has
+  moved to pg-raggraph 0.9 and chunkshop 1.0, while this stack is stele
+  0.1.0 / pg-raggraph 0.3.0a3 / chunkshop 0.4.3. The local stele commit was
+  on a branch since deleted from GitHub; its 39 branch commits do not touch
+  `src/`, so the pin is their merge-base on `main` (9006f17), identical
+  source and dependency pins. pg-raggraph and chunkshop are pinned at the
+  tested commits, both ancestors of their `main`.
+- R5: `voice.py` reads `PLEXUS_VOICE_ID`, falling back to the script's
+  `VOICE_ID` (premade "George"). The cache key includes the voice, so a run
+  without the variable re-renders in George; one clip (d01) was rendered
+  that way by mistake during this work and re-rendered in the original
+  voice (transcript checked).
+- R6: `results/tune-reference/20261019-125722/` (148 KB: summary, report,
+  base and adopted harness). `tune()` merges it with `tuned/*`; the newest
+  name wins.
+- R7: deck slide 12 shows the clone commands; deck video re-recorded
+  (5:20, both live checks ok, 0 page errors) and the .pptx re-exported.
+  README: quick start, the model caveat, `DEPS`/ports, license section,
+  GitHub links for the siblings in place of `../` links.
+- R8: fresh clone in a scratch dir, `DEPS` there, ports 55451/8776, default
+  Ollama 4B: deps 6 s, image 1.5 min, ingest, seed (agent pointed at 8776),
+  veto right both ways, memory supersede and as-of right, every UI route 200,
+  tuning numbers from the reference run. `make run` with the 4B model failed
+  the assertion (13 iterations, stopped early), as the README now says.
+- R9: `deck.js` replays `window.DECK_SNAPSHOT` when present: the live slide
+  is labelled "Recorded" with the date, refunds take 1 to 2 s, the result
+  follows the state (oct before v3 committed, after v3 rejected, jul
+  committed). `demo/snapshot.py` refuses to write a snapshot whose run did
+  not come out as the deck tells it. Presenter window opens relative to the
+  page, so it works under `/plexus/deck/`. Site checked under a `/plexus/`
+  path at 1440 and 390 wide: no horizontal scroll, all three videos play,
+  the deck replays and resets, no page errors.
+- R10: secret scan PASS (`skill-output/secret-scan/`), `.env*`/key files
+  added to `.gitignore`. `gh-pages` is one orphan commit replaced on each
+  publish, so old videos do not pile up in history.
 
 ## Next steps and gaps
 
-(filled in at the end)
+- The pins hold Plexus on stele 0.1 / pg-raggraph 0.3 / chunkshop 0.4.
+  Moving to current releases is a porting job (APIs changed) and should be
+  tested the same way: fresh clone, then the make targets.
+- pg-synapse is pinned to a commit on `harness2-borrowings`; if that branch
+  is deleted before a merge, GitHub may drop the commit. Merge the PR or tag
+  the commit.
+- The default 4B model does not pass the triage assertion reliably. A
+  laptop-sized model that does would make the quick start fully green.
+- The site's deck replays one recorded run; re-run `demo/snapshot.py` and
+  `make site-publish` after changing the scenario.
+- Videos are on `gh-pages` (63 MB). Fine for Pages (1 GB site, 100 MB per
+  file); a much longer video would want a release asset or a video host.

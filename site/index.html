@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus</title>
+<meta name="description" content="An AI agent that lives in Postgres: it reads the policy in effect on the day, vetoes bad writes inside the transaction, remembers with evidence, and tunes its own harness from its own runs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="./">Plexus</a>
+  <nav>
+    <a href="#watch">Watch</a>
+    <a href="#deck">Presentation</a>
+    <a href="#run">Run it</a>
+    <a href="https://github.com/TheYonk/plexus">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>One Postgres runs the agent, its knowledge, its memory, and the loop that makes it better.</h1>
+    <p class="lede">Plexus is a working demo. A support-triage agent runs inside the database with one SQL call. It looks up the refund policy that was in effect on each ticket's date, an agent on the refunds table vetoes a bad refund before it commits, every decision cites its evidence, and a tuner rewrites the agent's own harness from its past runs.</p>
+  </section>
+
+  <section id="watch" class="watch">
+    <div class="player">
+      <video id="video" controls preload="metadata" playsinline poster="media/plexus-deck.jpg">
+        <source id="video-src" src="media/plexus-deck.mp4" type="video/mp4">
+      </video>
+    </div>
+    <ol class="cuts" id="cuts">
+      <li><button class="cut on" data-src="plexus-deck">
+        <b>The presentation, narrated</b><span>5:20. The talk, slide by slide, with the policy change run live.</span></button></li>
+      <li><button class="cut" data-src="plexus-demo">
+        <b>The engineer's walkthrough</b><span>6:06. The stack, a live agent run, its trajectory, the tuner, next to a real shell.</span></button></li>
+      <li><button class="cut" data-src="plexus-exec">
+        <b>The business case</b><span>4:03. A retailer's refund queue: a vetoed refund, one decision explained, the measured saving.</span></button></li>
+    </ol>
+    <p class="note">Every run in these videos is real: the agent, the veto and the policy change ran against the database while recording. Waits on the model are sped up.</p>
+  </section>
+
+  <section id="deck" class="deck">
+    <div class="sec-head">
+      <h2>The presentation</h2>
+      <p>Click the slides or use the arrow keys. Slide 6 replays a real run of the policy change, recorded <span id="recorded">from the live deck</span>; clone the repo to run it against your own database.</p>
+    </div>
+    <div class="frame"><iframe src="deck/#1" title="Plexus presentation" allow="fullscreen"></iframe></div>
+    <p class="links"><a href="deck/">Open it full screen</a> <span class="sep">or</span> <a href="media/plexus-deck.pptx" download>download the .pptx</a> with speaker notes.</p>
+  </section>
+
+  <section class="inside">
+    <h2>What is in the one database</h2>
+    <dl class="parts">
+      <div class="p-syn"><dt><a href="https://github.com/yonk-labs/pg-synapse">pg_synapse</a></dt><dd>The agent runtime. <code>SELECT synapse.execute(...)</code> runs the whole tool loop, and inline triggers put an agent in front of a write.</dd></div>
+      <div class="p-rag"><dt><a href="https://github.com/yonk-labs/pg-raggraph">pg-raggraph</a></dt><dd>Retrieval with effective dates: ask for the policy as of a day and get the version that applied then.</dd></div>
+      <div class="p-stele"><dt><a href="https://github.com/yonk-labs/stele">stele</a></dt><dd>Memory with evidence. Each belief cites an artifact, a correction supersedes it, and you can ask what was believed at any instant.</dd></div>
+      <div class="p-chunk"><dt><a href="https://github.com/yonk-labs/chunkshop">chunkshop</a></dt><dd>Ingest: the policy corpus and the agent's own past runs, as vector tables next to everything else.</dd></div>
+      <div class="p-h2"><dt><a href="https://github.com/google-research/harness2">harness2</a> (the idea)</dt><dd>Hold the model fixed and tune everything around it from evidence. Reimplemented inside pg_synapse; no harness2 code is used.</dd></div>
+    </dl>
+    <p class="limits">What it does not do yet, said plainly in the deck: a small model passes the triage task only some of the time, the veto is a model call per insert (seconds, not milliseconds), long runs sometimes stop early, and any dollar figure is an assumption until measured.</p>
+  </section>
+
+  <section id="run" class="run">
+    <h2>Run it</h2>
+    <p>You need Docker, <code>psql</code>, <code>git</code>, <code>uv</code>, Python 3.12 and Ollama. The first <code>make up</code> builds Postgres with pg_synapse, which takes a few minutes.</p>
+<pre><code>ollama pull qwen3:4b-instruct-2507-q4_K_M
+OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=32768 ollama serve &amp;
+
+git clone https://github.com/TheYonk/plexus &amp;&amp; cd plexus
+make deps venv up ingest seed   # siblings at pinned commits, then the stack
+make run                        # the agent triages 8 tickets
+make veto                       # a bad refund is rejected inside the transaction
+make ui                         # http://127.0.0.1:8766/ and /deck</code></pre>
+    <p>The default 4B model is small enough for a laptop and fails the full triage check more often than not. Point the agent at a bigger OpenAI-compatible model with <code>make seed LLM_MODEL=... LLM_BASE_URL=...</code>; the videos used Qwen3.6-35B-A3B on vLLM. The <a href="https://github.com/TheYonk/plexus#readme">README</a> has the rest: memory, tuning, the videos.</p>
+  </section>
+</main>
+
+<footer>
+  <p>Plexus is Apache-2.0. <a href="https://github.com/TheYonk/plexus">github.com/TheYonk/plexus</a></p>
+</footer>
+<script>
+const v = document.getElementById("video");
+document.getElementById("cuts").addEventListener("click", (e) => {
+  const b = e.target.closest(".cut");
+  if (!b) return;
+  document.querySelectorAll(".cut").forEach((c) => c.classList.toggle("on", c === b));
+  v.poster = `media/${b.dataset.src}.jpg`;
+  document.getElementById("video-src").src = `media/${b.dataset.src}.mp4`;
+  v.load();
+  v.play().catch(() => {});
+});
+fetch("deck/recorded.txt").then((r) => r.ok && r.text()).then((t) => t && (document.getElementById("recorded").textContent = `on ${t.trim()}`)).catch(() => {});
+</script>
+</body>
+</html>

@@ -1,14 +1,40 @@
 // Plexus deck. A 1920x1080 stage scaled to the window; arrows / space /
 // click to move; S opens a presenter window kept in step over a
 // BroadcastChannel; F toggles fullscreen. ?print=1 is the export view.
-// window.deckDemo is what demo/record.py drives.
+// window.deckDemo is what demo/record.py drives. With window.DECK_SNAPSHOT
+// set (the static site, see site/build.py) there is no API: answers come
+// from a recorded run, and the live slide replays it.
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const SNAP = window.DECK_SNAPSHOT;
 const api = async (path, opts) => {
+  if (SNAP) return replay(path, opts);
   const r = await fetch(path, opts);
   if (!r.ok) throw new Error(`${path}: ${r.status} ${await r.text()}`);
   return r.json();
 };
+// The recorded answers. The policy change keeps its state here, and each
+// refund takes a second or two instead of its recorded 4 to 10.
+const sim = { v3: false, results: {}, publish: null };
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+async function replay(path, opts) {
+  const body = opts?.body ? JSON.parse(opts.body) : {};
+  if (path === "/ui/harness") return SNAP.harness;
+  if (path === "/exec/numbers") return SNAP.numbers;
+  if (path.startsWith("/exec/audit/")) return SNAP.audit;
+  if (path === "/deck/policy/state") return structuredClone(sim);
+  if (path === "/deck/policy/reset") return Object.assign(sim, { v3: false, results: {}, publish: null });
+  if (path === "/deck/policy/publish") {
+    await pause(500);
+    return Object.assign(sim, { v3: true, publish: SNAP.policy.publish }).publish;
+  }
+  if (path === "/deck/policy/try") {
+    const r = body.case === "jul" ? SNAP.policy.jul : SNAP.policy[sim.v3 ? "after" : "before"];
+    await pause(Math.min(2000, 300 * r.seconds));
+    return (sim.results[body.label] = r);
+  }
+  throw new Error(`${path}: not in the recording`);
+}
 const post = (path, body) => api(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -53,7 +79,7 @@ addEventListener("keydown", (e) => {
   if (["ArrowLeft", "PageUp"].includes(e.key)) goto(current - 1);
   if (e.key === "Home") goto(1);
   if (e.key === "End") goto(slides.length);
-  if (e.key === "s" || e.key === "S") window.open(`/deck?presenter=1#${current}`, "plexus-presenter", "width=1500,height=800");
+  if (e.key === "s" || e.key === "S") window.open(`${location.pathname}?presenter=1#${current}`, "plexus-presenter", "width=1500,height=800");
   if (e.key === "f" || e.key === "F") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
 $("#stage").addEventListener("click", (e) => {
@@ -189,6 +215,12 @@ function clearSpot() {
 }
 
 window.deckDemo = { goto, spotlight, clearSpot, tryRefund, publish, runAfter, resetPolicy, loadAudit, loadNumbers, loadHarness, policy: () => policy, ready: false };
+
+if (SNAP) {
+  document.body.classList.add("static");
+  $(".s-live .live-tag").textContent = "Recorded";
+  $("#recorded").textContent = `Replaying a real run recorded ${SNAP.recorded}. Clone the repo to run it live.`;
+}
 
 Promise.allSettled([
   api("/deck/policy/state").then((s) => drawPolicy(s, false)),

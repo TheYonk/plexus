@@ -22,7 +22,10 @@ runs, the veto and the policy change in the videos are live, not mocked.
   plus Playwright's Chromium once: `api/.venv/bin/playwright install chromium`.
 - For the videos, `ELEVENLABS_API_KEY` in the environment. Never put it in
   a file in this repo.
-- The agent model reachable (vLLM on .133, or whichever profile is set),
+- `PLEXUS_VOICE_ID` for the voice (default: the premade voice "George").
+  Clips are cached per voice, so set it the same way every time; a run
+  without it renders every clip again in the default voice.
+- The agent model reachable (whichever profile `make seed` set),
   because the recordings make real agent and veto calls.
 
 ## How a video is made
@@ -151,3 +154,4 @@ The slides are pictures, so text cannot be edited in PowerPoint. Edit
 | `record.py` | Playwright recording and timeline |
 | `mux.py` | speed-ups, cuts, levelling, final mp4 |
 | `export_pptx.py` | deck screenshots to .pptx with notes |
+| `snapshot.py` | records the deck's live data and one real policy change for the static site |

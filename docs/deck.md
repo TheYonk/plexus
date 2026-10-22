@@ -20,7 +20,7 @@ make ui                               # API on 8766 with the UI routes
 Then check:
 
 1. The agent model answers. Slide 6 makes one LLM call per refund (the veto
-   trigger). With vLLM on .133 that is 4 to 10 s; if the model is down the
+   trigger). With Qwen3.6 on vLLM that is 4 to 10 s; if the model is down the
    refund fails and the slide shows the error.
 2. Slide 7 has a decision to show. It explains ticket 104, so a triage run
    must have happened since the last reseed. If the slide is empty, run
@@ -180,7 +180,7 @@ exporter: `goto(n)`, `spotlight(selector)`, `clearSpot()`,
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Slide 6 refund never comes back | the model endpoint is down or slow; check `curl http://192.168.1.133:8000/v1/models` |
+| Slide 6 refund never comes back | the model endpoint is down or slow; check it answers, e.g. `curl <LLM_BASE_URL>/models` from the host |
 | The first refund is rejected | v3 is still published from an earlier run; Reset to v2 and try again |
 | Refunds commit even after v3 | check the publish result on the slide names v3 for 10 October; if it does, the model misjudged (the try route re-attaches the trigger before every insert, so a missing trigger is not the cause) |
 | Slide 7 is empty | no triage run since the last seed; `make run` |

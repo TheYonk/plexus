@@ -9,3 +9,11 @@ tuned/
 # skill output
 skill-output/
 demo/out/
+# the built project site (published to the gh-pages branch)
+site/_build/
+# secrets never belong here (keys come from the environment)
+.env
+.env.*
+!.env.example
+*.pem
+*.key

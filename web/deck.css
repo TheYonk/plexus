@@ -154,3 +154,9 @@ body.presenter-mode .viewport { right: 36vw; }
 .p-keys { color: #4f5b69; font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) { .slide *, .tl-band { animation: none !important; transition: none !important; } }
+
+/* static site (site/build.py): the live slide replays a recorded run and says so */
+.recorded { display: none; }
+body.static .recorded { display: block; position: absolute; right: 140px; top: 90px; margin: 0; font: 16px var(--sans); color: var(--muted); }
+body.static .live-tag { color: var(--muted); }
+body.static .live-tag::before { background: var(--muted); animation: none; }

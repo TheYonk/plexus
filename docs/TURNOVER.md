@@ -47,7 +47,7 @@ can climb rather than only accept a full pass. See "Next steps".
 ```bash
 # Ollama must bind all interfaces with a large context (default 4k breaks agent loops)
 pkill -x ollama; OLLAMA_HOST=0.0.0.0:11434 OLLAMA_CONTEXT_LENGTH=32768 setsid -f ollama serve
-cd /home/yonk/yonk-tools/plexus
+cd plexus
 make up && make ingest && make seed      # DB is ephemeral: `make down` wipes it
 make run; make veto; make memory; make trajectories
 make tune K=2                             # ~30 min; improver = claude CLI (OAuth, no API key)
