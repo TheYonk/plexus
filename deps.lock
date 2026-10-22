@@ -2,6 +2,6 @@
 # `make deps` clones each one into $(DEPS)/<name> (default: next to this
 # checkout) and checks out the commit. Format: name url commit
 pg-synapse  https://github.com/yonk-labs/pg-synapse   e26165d5334d2b4aeeb651f1be6a248bf825ceef
-stele       https://github.com/yonk-labs/stele        37460394236141f3f2f66d94c59fa423517c6485
+stele       https://github.com/yonk-labs/stele        9006f1766c00b8aa61917751af85ec7005a2c1b2
 pg-raggraph https://github.com/yonk-labs/pg-raggraph  93a8b355275531597c2eb44ba935081a6d5d9e9a
 chunkshop   https://github.com/yonk-labs/chunkshop    5fd593e9b6c82b129481a66d468895a4b733a489
